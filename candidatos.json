@@ -1,0 +1,54 @@
+[
+    {
+        "id": 1,
+        "nombre": "Juan Perez",
+        "habilidades": [
+            "JavaScript",
+            "Node.js",
+            "MongoDB"
+        ],
+        "experiencia": 5,
+        "ubicacion": "Madrid",
+        "educacion": "Licenciatura en Informática",
+        "disponibilidad": "Full-time"
+    },
+    {
+        "id": 2,
+        "nombre": "Ana Gomez",
+        "habilidades": [
+            "Python",
+            "Django",
+            "PostgreSQL"
+        ],
+        "experiencia": 3,
+        "ubicacion": "Barcelona",
+        "educacion": "Ingeniería en Sistemas",
+        "disponibilidad": "Part-time"
+    },
+    {
+        "id": 3,
+        "nombre": "Luis Martinez",
+        "habilidades": [
+            "Java",
+            "Spring",
+            "MySQL"
+        ],
+        "experiencia": 8,
+        "ubicacion": "Valencia",
+        "educacion": "Máster en Ciencias de la Computación",
+        "disponibilidad": "Full-time"
+    },
+    {
+        "id": 4,
+        "nombre": "Maria Fernandez",
+        "habilidades": [
+            "JavaScript",
+            "React",
+            "Node.js"
+        ],
+        "experiencia": 4,
+        "ubicacion": "Madrid",
+        "educacion": "Licenciatura en Ingeniería de Software",
+        "disponibilidad": "Full-time"
+    }
+]
