@@ -174,7 +174,7 @@ router.post("/api/login", cors(), async (req, res) => {
         clientDB.close();
     }
 })
-router.post("/api/match", cors(), async (req, res) => {
+router.get("/api/match", cors(), async (req, res) => {
     res.setHeader('Content-Type', 'application/json');
     res.setHeader('Cache-Control', 's-max-age=1, stale-while-revalidate');
     res.setHeader('Access-Control-Allow-Origin', `https://opawork.vercel.app`);
