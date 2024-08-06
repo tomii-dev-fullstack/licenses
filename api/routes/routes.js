@@ -178,19 +178,10 @@ router.post("/api/match", cors(), async (req, res) => {
     res.setHeader('Content-Type', 'application/json');
     res.setHeader('Cache-Control', 's-max-age=1, stale-while-revalidate');
     res.setHeader('Access-Control-Allow-Origin', `https://opawork.vercel.app`);
-    res.setHeader('Access-Control-Allow-Credentials', "true");
-    const { token } = req.body;
 
-    if (!token) {
-        return res.status(401).json({ error: 'Token inválido' });
-    }
 
     try {
-        // Verificar el token de Google con Firebase Admin
-        const decodedToken = await auth.verifyIdToken(token);
-        console.log(decodedToken);
-        const userEmail = decodedToken.email;
-
+     
         // Buscar usuario en la base de datos
         await clientDB.connect()
         const jobs = clientDB.db("opawork").collection("job").find();
@@ -199,17 +190,8 @@ router.post("/api/match", cors(), async (req, res) => {
             return res.status(404).json({ error: 'No hay trabajos' });
         }
 
-        // Generar un token de sesión (puedes usar el mismo token o un JWT personalizado)
-        const sessionToken = token; // Para simplicidad, estamos usando el mismo token
-
-        // Configurar la cookie con el token de sesión
-        /*  res.cookie('session', sessionToken, {
-             httpOnly: true,
-             secure: process.env.NODE_ENV === 'production',
-         }); */
-
         return res.status(200).json({
-            message: 'Login exitoso',
+            message: 'Búsqueda exitosa',
             job: jobs
         });
     } catch (error) {
