@@ -2,6 +2,7 @@ import { Router } from "express";
 import { clientDB } from "../../lib/database.js";
 import { ObjectId } from "mongodb";
 import { auth } from '../../firebase.js';
+import cors from "cors"
 const router = Router()
 
 
@@ -118,7 +119,7 @@ router.get("/api/all_advises/:id", async (req, res) => {
         clientDB.close();
     }
 })
-router.post("/api/login", async (req, res) => {
+router.post("/api/login", cors(), async (req, res) => {
     res.setHeader('Content-Type', 'application/json');
     res.setHeader('Cache-Control', 's-max-age=1, stale-while-revalidate');
     res.setHeader('Access-Control-Allow-Origin', `*`);
