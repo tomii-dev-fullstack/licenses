@@ -17,7 +17,8 @@
             "dest": "api/index.js",
             "methods": [
                 "POST",
-                "GET"
+                "GET",
+                "OPTIONS"
             ],
             "headers": {
                 "Access-Control-Allow-Origin": "*"
