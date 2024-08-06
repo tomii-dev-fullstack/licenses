@@ -177,30 +177,27 @@ router.post("/api/login", cors(), async (req, res) => {
 router.get("/api/match", cors(), async (req, res) => {
     res.setHeader('Content-Type', 'application/json');
     res.setHeader('Cache-Control', 's-max-age=1, stale-while-revalidate');
-    res.setHeader('Access-Control-Allow-Origin', `https://opawork.vercel.app`);
-
+    res.setHeader('Access-Control-Allow-Origin', 'https://opawork.vercel.app');
 
     try {
-     
-        // Buscar usuario en la base de datos
-        await clientDB.connect()
-        const jobs = clientDB.db("opawork").collection("job").find();
+        await clientDB.connect();
+        const jobsCursor = clientDB.db("opawork").collection("job").find();
+        const jobs = await jobsCursor.toArray();
 
-        if (!jobs) {
+        if (!jobs.length) {
             return res.status(404).json({ error: 'No hay trabajos' });
         }
 
         return res.status(200).json({
             message: 'Búsqueda exitosa',
-            job: jobs
+            jobs: jobs
         });
     } catch (error) {
-        console.error('Error verifying token:', error);
-        return res.status(401).json({ error: 'No autorizado' });
+        console.error('Error al buscar trabajos:', error);
+        return res.status(500).json({ error: 'Error interno del servidor' });
+    } finally {
+        await clientDB.close(); // Asegúrate de que la conexión se cierra correctamente
     }
-    finally {
-        clientDB.close();
-    }
-})
+});
 
 export default router
