@@ -146,11 +146,10 @@ router.post("/api/login", cors(), async (req, res) => {
         const sessionToken = token; // Para simplicidad, estamos usando el mismo token
 
         // Configurar la cookie con el token de sesión
-        res.cookie('session', sessionToken, {
+       /*  res.cookie('session', sessionToken, {
             httpOnly: true,
             secure: process.env.NODE_ENV === 'production',
-            sameSite: 'Strict',
-        });
+        }); */
 
         return res.status(200).json({
             message: 'Login exitoso',
