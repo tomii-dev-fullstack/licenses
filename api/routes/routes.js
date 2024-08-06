@@ -16,6 +16,8 @@ router.get("/", (req, res) => {
 router.get("/api/advise/:id", async (req, res) => {
     res.setHeader('Content-Type', 'application/json');
     res.setHeader('Cache-Control', 's-max-age=1, stale-while-revalidate');
+    res.setHeader('Access-Control-Allow-Origin', `https://opawork.vercel.app`);
+    res.setHeader('Access-Control-Allow-Credentials', "true");
     try {
         const { id } = req.params;
         if (!id) {
