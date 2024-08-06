@@ -3,33 +3,10 @@ import { clientDB } from "../../lib/database.js";
 import { ObjectId } from "mongodb";
 import { auth } from '../../firebase.js';
 import cors from "cors"
-import multer from 'multer';
 import { uploadFileToS3 } from "../s3/s3.js";
-import path from "path"
-import { fileURLToPath } from 'url';
-import fs from "fs";
+
 const router = Router()
-// Obtener __filename y __dirname
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
-// Asegúrate de que la carpeta "uploads" exista
-const uploadDir = path.join(__dirname, '..', 'uploads');
-if (!fs.existsSync(uploadDir)) {
-    fs.mkdirSync(uploadDir);
-}
-
-// Configurar Multer para guardar los archivos en la carpeta "uploads"
-const storage = multer.diskStorage({
-    destination: (req, file, cb) => {
-        cb(null, uploadDir);
-    },
-    filename: (req, file, cb) => {
-        cb(null, Date.now() + path.extname(file.originalname));
-    },
-});
-
-const upload = multer({ storage: storage });
 
 router.get("/", (req, res) => {
     res.setHeader('Content-Type', 'application/json');
@@ -222,7 +199,7 @@ router.get("/api/match", cors(), async (req, res) => {
         await clientDB.close(); // Asegúrate de que la conexión se cierra correctamente
     }
 });
-router.post("/api/upload/profile-image", upload.single("file"), cors(), async (req, res) => {
+router.post("/api/upload/profile-image",  cors(), async (req, res) => {
     res.setHeader('Content-Type', 'application/json');
     res.setHeader('Cache-Control', 's-max-age=1, stale-while-revalidate');
     res.setHeader('Access-Control-Allow-Origin',  'https://opawork.vercel.app');
