@@ -19,7 +19,7 @@ const client = new MercadoPagoConfig({
 
 })
  const app = express();
-const port = process.env.PORT || 3001;
+const port = 3001;
  
 dotenv.config();
 
@@ -487,3 +487,7 @@ app.get("/", (req, res) => {
     res.setHeader ('Cache-Control', 's-max-age=1, stale-while-revalidate');
     res.send("Hello World!");
 })
+
+app.listen(port, () => {
+    console.log(`Server running on port ${port}`);
+});
