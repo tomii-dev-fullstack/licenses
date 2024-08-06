@@ -3,7 +3,7 @@ dotenv.config()
 import { applicationDefault, initializeApp } from "firebase-admin/app";
 import { getAuth } from "firebase-admin/auth"
 import admin from "firebase-admin"
-const privateKey = process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n');
+const privateKey = process.env.FIREBASE_PRIVATE_KEY;
 console.log(privateKey)
 initializeApp({
     credential: admin.credential.cert({
