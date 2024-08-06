@@ -22,7 +22,7 @@
             ],
             "headers": {
                 "Access-Control-Allow-Origin": "https://opawork.vercel.app",
-                "Access-Control-Allow-Credentials":true
+                "Access-Control-Allow-Credentials":"true"
             }
         }
     ]
