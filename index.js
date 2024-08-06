@@ -19,20 +19,20 @@ const client = new MercadoPagoConfig({
     accessToken: "TEST-5387852327876700-073110-755bd3bd40e2672d39bea5dad3cfbbec-360175350",
 
 })
- const app = express();
+const app = express();
 const port = 3001;
- app.use(router)
+app.use(router)
 dotenv.config();
 
-app.use(cors({origin:"*"}))
+app.use(cors({ origin: "*" }))
 
-app.use(function(req, res, next) {
+app.use(function (req, res, next) {
     res.header("Access-Control-Allow-Origin", "*");
     res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
     next();
-  });
+});
 app.use(cors({
-    origin: 'https://opawork.vercel.app', 
+    origin: 'https://opawork.vercel.app',
     methods: ['GET', 'POST', 'PUT', 'DELETE'],
     allowedHeaders: ['Access-Control-Allow-Origin', 'Access-Control-Allow-Methods'],
 }));
@@ -59,7 +59,7 @@ const upload = multer({ storage: storage });
 // Rutas
 app.get('/match/:id', async (req, res) => {
     try {
-        const candidato = candidatos.find(candidato => candidato.id === 2); 
+        const candidato = candidatos.find(candidato => candidato.id === 2);
         const matches = ofertas.map(oferta => {
             const matchScore = calcularMatch(oferta, candidato);
             return { titulo: oferta.titulo, porcentaje: matchScore.toFixed(2) };
@@ -78,7 +78,7 @@ app.post("/api/upload", upload.single("yo"), async (req, res) => {
             return res.status(400).send('No se encontró ningún archivo.');
         }
 
-    
+
         /*   await uploadFileToS3(req.file); */
         res.send("Archivo subido exitosamente!");
     } catch (error) {
@@ -484,3 +484,6 @@ app.post("/api/create_advise/:id", async (req, res) => {
 })
 
  */
+app.listen(3001, (req, res) => {
+    console.log("escucahd")
+})
