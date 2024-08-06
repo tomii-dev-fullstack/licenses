@@ -14,13 +14,14 @@ import { auth } from './firebase.js';
 import cookieParser from 'cookie-parser';
 import { clientDB } from './lib/database.js';
 import { ObjectId } from 'mongodb';
+import router from "./api/routes/routes.js"
 const client = new MercadoPagoConfig({
     accessToken: "TEST-5387852327876700-073110-755bd3bd40e2672d39bea5dad3cfbbec-360175350",
 
 })
  const app = express();
 const port = 3001;
- 
+ app.use(router)
 dotenv.config();
 
 app.use(cors({origin:"*"}))
@@ -31,18 +32,13 @@ app.use(function(req, res, next) {
     next();
   });
 app.use(cors({
-    origin: 'https://opawork.vercel.app', // Agregar el dominio donde se va a consumir la API
+    origin: 'https://opawork.vercel.app', 
     methods: ['GET', 'POST', 'PUT', 'DELETE'],
     allowedHeaders: ['Access-Control-Allow-Origin', 'Access-Control-Allow-Methods'],
 }));
 app.use(cookieParser())
 
-// SDK de Mercado Pago
 
-// Agrega credenciales
-
-
-// Crear el directorio 'tmp' si no existe
 const uploadDir = 'tmp';
 if (!fs.existsSync(uploadDir)) {
     fs.mkdirSync(uploadDir);
@@ -63,8 +59,7 @@ const upload = multer({ storage: storage });
 // Rutas
 app.get('/match/:id', async (req, res) => {
     try {
-        const candidato = candidatos.find(candidato => candidato.id === 2); // Usa req.params.id si es necesario
-
+        const candidato = candidatos.find(candidato => candidato.id === 2); 
         const matches = ofertas.map(oferta => {
             const matchScore = calcularMatch(oferta, candidato);
             return { titulo: oferta.titulo, porcentaje: matchScore.toFixed(2) };
@@ -83,7 +78,7 @@ app.post("/api/upload", upload.single("yo"), async (req, res) => {
             return res.status(400).send('No se encontró ningún archivo.');
         }
 
-        // Descomentar y ajustar según tu implementación de uploadFileToS3
+    
         /*   await uploadFileToS3(req.file); */
         res.send("Archivo subido exitosamente!");
     } catch (error) {
@@ -97,7 +92,7 @@ app.post("/api/purchase", (req, res) => {
         preference.create({
             body: {
                 items: req.body.items
-                // Allow only logged payments. To allow guest payments you can delete omit this property
+
 
             }
         })
@@ -482,12 +477,10 @@ app.post("/api/create_advise/:id", async (req, res) => {
         clientDB.close();
     }
 })
-app.get("/", (req, res) => {
+/* app.get("/", (req, res) => {
     res.setHeader ('Content-Type', 'application/json');
     res.setHeader ('Cache-Control', 's-max-age=1, stale-while-revalidate');
     res.send("Hello World!");
 })
 
-app.listen(port, () => {
-    console.log(`Server running on port ${port}`);
-});
+ */
