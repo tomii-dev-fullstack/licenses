@@ -122,7 +122,7 @@ router.get("/api/all_advises/:id", async (req, res) => {
 router.post("/api/login", cors(), async (req, res) => {
     res.setHeader('Content-Type', 'application/json');
     res.setHeader('Cache-Control', 's-max-age=1, stale-while-revalidate');
-    res.setHeader('Access-Control-Allow-Origin', `*`);
+    res.setHeader('Access-Control-Allow-Origin', `https://opawork.vercel.app`);
     if (!token) {
         return res.status(401).json({ error: 'Token inválido' });
     }
