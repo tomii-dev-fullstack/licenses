@@ -222,14 +222,14 @@ router.post("/api/upload/profile-image", cors(), async (req, res) => {
         res.status(500).send(error.message);
     }
 });
-router.post("/api/postulations/:id", /* cors(),  */async (req, res) => {
+router.post("/api/postulations/:id", cors(), async (req, res) => {
     /*     res.setHeader('Content-Type', 'application/json'); */
     res.setHeader('Cache-Control', 's-max-age=1, stale-while-revalidate');
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    const img = req.file
-    console.log(img)
+    res.setHeader('Access-Control-Allow-Origin', 'http://localhost:3000');
+
     try {
         const { id } = req.params;
+        console.log(id);
         if (!id) {
             return res.status(400).json({ message: 'user_id is required' });
         }
