@@ -5,6 +5,7 @@ import { auth } from '../../firebase.js';
 import cors from "cors"
 import { uploadFileToS3 } from "../s3/s3.js";
 
+
 const router = Router()
 
 
@@ -124,7 +125,7 @@ router.get("/api/all_advises/:id", async (req, res) => {
 router.post("/api/login", cors(), async (req, res) => {
     res.setHeader('Content-Type', 'application/json');
     res.setHeader('Cache-Control', 's-max-age=1, stale-while-revalidate');
-    res.setHeader('Access-Control-Allow-Origin',  `https://opawork.vercel.app` );
+    res.setHeader('Access-Control-Allow-Origin', `https://opawork.vercel.app`);
     res.setHeader('Access-Control-Allow-Credentials', "true");
     const { token } = req.body;
 
@@ -174,10 +175,10 @@ router.post("/api/login", cors(), async (req, res) => {
         clientDB.close();
     }
 })
-router.get("/api/match", cors(), async (req, res) => {
+router.get("/api/match", /* cors(),  */async (req, res) => {
     res.setHeader('Content-Type', 'application/json');
     res.setHeader('Cache-Control', 's-max-age=1, stale-while-revalidate');
-    res.setHeader('Access-Control-Allow-Origin', 'https://opawork.vercel.app');
+    res.setHeader('Access-Control-Allow-Origin', /* 'https://opawork.vercel.app' */'http://localhost:3000');
 
     try {
         await clientDB.connect();
@@ -199,18 +200,19 @@ router.get("/api/match", cors(), async (req, res) => {
         await clientDB.close(); // Asegúrate de que la conexión se cierra correctamente
     }
 });
-router.post("/api/upload/profile-image",  cors(), async (req, res) => {
-    res.setHeader('Content-Type', 'application/json');
+router.post("/api/upload/profile-image", cors(), async (req, res) => {
+    /*     res.setHeader('Content-Type', 'application/json'); */
     res.setHeader('Cache-Control', 's-max-age=1, stale-while-revalidate');
-    res.setHeader('Access-Control-Allow-Origin',  'https://opawork.vercel.app');
-    console.log(req.file)
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    const img = req.file
+    console.log(img)
     try {
         if (!req.file) {
             return res.status(400).json('No se encontró ningún archivo.');
         }
 
 
-        await uploadFileToS3(req.file)
+        /*    await uploadFileToS3(req.file) */
 
         res.json({
             message: "Archivo subido exitosamente!",
@@ -218,6 +220,64 @@ router.post("/api/upload/profile-image",  cors(), async (req, res) => {
         });
     } catch (error) {
         res.status(500).send(error.message);
+    }
+});
+router.post("/api/postulations/:id", /* cors(),  */async (req, res) => {
+    /*     res.setHeader('Content-Type', 'application/json'); */
+    res.setHeader('Cache-Control', 's-max-age=1, stale-while-revalidate');
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    const img = req.file
+    console.log(img)
+    try {
+        const { id } = req.params;
+        if (!id) {
+            return res.status(400).json({ message: 'user_id is required' });
+        }
+        await clientDB.connect();
+
+        console.log(id);
+        const applications = await clientDB.db("opawork").collection("user").aggregate([
+            {
+                $match: {
+                    _id: new ObjectId(id) // Filtramos por el usuario ID
+                }
+            },
+            {
+                $lookup: {
+                    from: "application", // Nombre de la colección de aplicaciones
+                    localField: "aplicaciones", // Campo en la colección de usuarios que contiene el array de ObjectId
+                    foreignField: "_id", // Campo en la colección de aplicaciones que coincide con los ObjectId
+                    as: "applicationDetails" // Nombre del array resultante
+                }
+            },
+            {
+                $lookup: {
+                    from: "job", // Nombre de la colección de trabajos
+                    localField: "applicationDetails.empleo_id", // Campo en la colección de aplicaciones
+                    foreignField: "_id", // Campo en la colección de trabajos
+                    as: "jobDetails" // Nombre del array resultante
+                }
+            },
+            {
+                $unwind: "$jobDetails" // Desenrollamos el array resultante para acceder a los detalles del trabajo
+            }
+        ]).toArray();
+
+        console.log(applications)
+        if (applications.length > 0) {
+            res.status(200).json(applications);
+            /*      clientDB.close(); */
+        } else {
+            res.status(404).json({ message: 'No se encontraron postulaciones para el usuario dado' });
+            /*     clientDB.close(); */
+        }
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'An error occurred while processing your request', error: error.message });
+        clientDB.close();
+    }
+    finally {
+        clientDB.close();
     }
 });
 

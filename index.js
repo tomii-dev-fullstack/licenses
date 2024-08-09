@@ -32,29 +32,13 @@ app.use(function (req, res, next) {
     next();
 });
 app.use(cors({
-    origin: 'https://opawork.vercel.app',
+    origin: ['https://opawork.vercel.app', 'http://localhost:3000'],
     methods: ['GET', 'POST', 'PUT', 'DELETE'],
     allowedHeaders: ['Access-Control-Allow-Origin', 'Access-Control-Allow-Methods'],
 }));
 app.use(cookieParser())
 
 
-const uploadDir = 'tmp';
-if (!fs.existsSync(uploadDir)) {
-    fs.mkdirSync(uploadDir);
-}
-
-// Configuración de multer
-const storage = multer.diskStorage({
-    destination: function (req, file, cb) {
-        cb(null, uploadDir); // Directorio de destino
-    },
-    filename: function (req, file, cb) {
-        cb(null, Date.now() + '-' + path.extname(file.originalname)); // Nombre del archivo
-    }
-});
-
-const upload = multer({ storage: storage });
 
 // Rutas
 app.get('/match/:id', async (req, res) => {
