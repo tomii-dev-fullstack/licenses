@@ -18,6 +18,8 @@
             "methods": [
                 "POST",
                 "GET",
+                "DELETE",
+                "PUT",
                 "OPTIONS"
             ],
             "headers": {
