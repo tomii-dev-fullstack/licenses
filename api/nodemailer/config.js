@@ -22,9 +22,15 @@ let mailOptions = {
 };
 
 // Enviar correo electrónico
-export const send = () => {
+export const send = (mailOptions) => {
 
-    transporter.sendMail(mailOptions, function (error, info) {
+    transporter.sendMail({
+        from: "opaawork@gmail.com",
+        to: mailOptions.to,
+        subject: mailOptions.subject,
+        text: mailOptions.text,
+        html: `<p>${mailOptions.text}</p>` // Para enviar correo con HTML, eliminar esta línea y agregar la línea anterior.
+    }, function (error, info) {
 
         if (error) {
             console.log(error);

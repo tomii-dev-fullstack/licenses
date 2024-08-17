@@ -8,17 +8,14 @@ import path from 'path';
 import dotenv from 'dotenv';
 import fs from "fs"
 import { uploadFileToS3 } from "./api/s3/s3.js"
-import { Payment, MercadoPagoConfig, Preference } from "mercadopago"
+
 import { send } from './api/nodemailer/config.js';
 import { auth } from './firebase.js';
 import cookieParser from 'cookie-parser';
 import { clientDB } from './lib/database.js';
 import { ObjectId } from 'mongodb';
 import router from "./api/routes/routes.js"
-const client = new MercadoPagoConfig({
-    accessToken: "TEST-5387852327876700-073110-755bd3bd40e2672d39bea5dad3cfbbec-360175350",
 
-})
 const app = express();
 const port = 3001;
 app.use(router)
@@ -70,71 +67,6 @@ app.post("/api/upload", upload.single("yo"), async (req, res) => {
     }
 });
 
-app.post("/api/purchase", (req, res) => {
-    try {
-        const preference = new Preference(client);
-        preference.create({
-            body: {
-                items: req.body.items
-
-
-            }
-        })
-            .then(preference => res.json({
-                status: 200,
-                message: 'La compra fue realizada con éxito!',
-                data: preference
-            }))
-            .catch(console.log);
-    } catch (error) {
-        console.error(error);
-        throw new Error("Error al crear la preferencia de Mercado Pago");
-    }
-
-
-})
-app.post("/api/postulate", async (req, res) => {
-    try {
-        const { jobId, userId, bussinesId } = req.body;
-
-        // Validar los datos de entrada
-        if (!jobId || !userId || !bussinesId) {
-            return res.status(400).json({ message: 'jobId, userId, and bussinesId are required' });
-        }
-
-        // Agregar la postulación al trabajo (esto puede variar según tu modelo)
-        /*    await clientDB.db("opawork").collection("job").insertOne({ jobId: "jobId", userId: "userId" })
-    */
-        // Agregar la postulación al usuario (esto puede variar según tu modelo)
-        await clientDB.db("opawork").collection("application").insertOne({
-            usuario_id: new ObjectId(userId),
-            empleo_id: new ObjectId(jobId),
-            fecha_aplicacion: new Date(),
-            estado: "En revisión"
-        }).then(res => {
-            if (res.acknowledged) {
-                console.log(res);
-                /* send({
-                    to: 'email@example.com',
-                    subject: 'Nueva postulación en OpaWork',
-                    text: `Un usuario ha postulado a un trabajo en OpaWork. Detalles: Job ID: ${jobId}, Usuario ID: ${userId}`
-                }); */
-            }
-        }).catch(error => {
-            console.error('Error inserting application:', error);
-        });
-
-        return res.status(200).json({
-            message: 'Se ha enviado la postulación con éxito!',
-            jobId,
-            userId,
-            bussinesId
-        });
-    } catch (error) {
-        console.error(error);
-        return res.status(500).json({ message: 'An error occurred while processing your request', error: error.message });
-    }
-})
 
 
 app.get("/api/postulations/:id", async (req, res) => {
@@ -413,54 +345,7 @@ app.post('/api/register', async (req, res) => {
         return res.status(401).json({ error: 'No autorizado' });
     }
 });
-app.post("/api/create_advise/:id", async (req, res) => {
-    try {
-        const { id } = req.params; // Corregir la desestructuración de params
-        const { title, description, location, type, salary, experience, requirements, user_id, benefits } = req.body;
 
-        // Verificar que todos los campos obligatorios están presentes
-        /*    if (!title || !description || !location || !type || !salary || !experience || !requirements || !user_id) {
-               return res.status(400).json({ message: 'Todos los campos son obligatorios' });
-           } */
-
-        await clientDB.connect();
-
-        // Verificar que el usuario existe
-        const bussinesUser = await clientDB.db("opawork").collection("user").findOne({ _id: new ObjectId(id) });
-        if (!bussinesUser) {
-            return res.status(404).json({ message: 'Usuario no encontrado' });
-        }
-
-
-        const newAdvise = {
-            title,
-            description,
-            location,
-            type,
-            salary,
-            experience,
-            user_id: new ObjectId(id),
-            requirements,
-            benefits,
-            createdAt: new Date()
-        };
-        const result = await clientDB.db("opawork").collection("job").insertOne(newAdvise);
-        if (result.acknowledged) {
-
-            await clientDB.db("opawork").collection("user").updateOne({ _id: new ObjectId(id) }, { $push: { avisos: result.insertedId } });
-
-            console.log(result);
-
-            res.status(201).json({ message: 'Anuncio creado exitosamente' });
-
-        }
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: 'An error occurred while processing your request', error: error.message });
-    } finally {
-        clientDB.close();
-    }
-})
 /* app.get("/", (req, res) => {
     res.setHeader ('Content-Type', 'application/json');
     res.setHeader ('Cache-Control', 's-max-age=1, stale-while-revalidate');
