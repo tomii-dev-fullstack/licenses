@@ -21,8 +21,8 @@
                 "OPTIONS"
             ],
             "headers": {
-                "Access-Control-Allow-Origin": ["https://opawork.vercel.app","http://localhost:3000"],
-                "Access-Control-Allow-Credentials":"true"
+                "Access-Control-Allow-Origin": "https://opawork.vercel.app , http://localhost:3000",
+                "Access-Control-Allow-Credentials": "true"
             }
         }
     ]
