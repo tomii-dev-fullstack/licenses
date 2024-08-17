@@ -1598,7 +1598,7 @@ router.get("/api/postulations/:id", cors(), async (req, res) => {
 router.post("/api/postulate", async (req, res) => {
     try {
         const { jobId, userId, bussinesId } = req.body;
-
+        console.log(jobId, userId, bussinesId);
         // Validar los datos de entrada
         if (!jobId || !userId || !bussinesId) {
             return res.status(400).json({ message: 'jobId, userId are required' });
