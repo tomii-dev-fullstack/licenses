@@ -1596,6 +1596,9 @@ router.get("/api/postulations/:id", cors(), async (req, res) => {
 });
 
 router.post("/api/postulate", async (req, res) => {
+        /*     res.setHeader('Content-Type', 'application/json'); */
+        res.setHeader('Cache-Control', 's-max-age=1, stale-while-revalidate');
+        res.setHeader('Access-Control-Allow-Origin', 'http://localhost:3000');
     try {
         const { jobId, userId, bussinesId } = req.body;
         console.log(jobId, userId, bussinesId);
@@ -1630,6 +1633,9 @@ router.post("/api/postulate", async (req, res) => {
     }
 })
 router.post("/api/mark_user-view", async (req, res) => {
+        /*     res.setHeader('Content-Type', 'application/json'); */
+        res.setHeader('Cache-Control', 's-max-age=1, stale-while-revalidate');
+        res.setHeader('Access-Control-Allow-Origin', 'http://localhost:3000');
     try {
         const { _id } = req.body;
 
@@ -1663,6 +1669,9 @@ router.post("/api/mark_user-view", async (req, res) => {
 
 
 router.post("/api/create_advise/:id", async (req, res) => {
+        /*     res.setHeader('Content-Type', 'application/json'); */
+        res.setHeader('Cache-Control', 's-max-age=1, stale-while-revalidate');
+        res.setHeader('Access-Control-Allow-Origin', 'http://localhost:3000');
     try {
         const { id } = req.params; // Corregir la desestructuración de params
         const { title, description, street, type, salary, experience, requirements, benefits, typeTime, company, sector,
