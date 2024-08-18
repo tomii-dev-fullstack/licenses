@@ -309,17 +309,17 @@ router.get("/api/match/:id", /* cors(), */ async (req, res) => {
 
 
 
-router.post("/api/search_term", cors(), async (req, res) => {
-    /*     res.setHeader('Content-Type', 'application/json'); */
+router.get("/api/match/explorer/:id", cors(), async (req, res) => {
+    res.setHeader('Content-Type', 'application/json');
     res.setHeader('Cache-Control', 's-max-age=1, stale-while-revalidate');
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    const { searchTerm } = req.body
-    console.log(searchTerm)
+    res.setHeader('Access-Control-Allow-Origin', /* 'https://opawork.vercel.app' */'http://localhost:3000');
+    const { id } = req.params
+
     try {
-        if (!searchTerm) {
-            return res.status(400).json('No hay datos.');
-        }
+
         await clientDB.connect();
+        console.log(id);
+
         const jobsBD = await clientDB.db("opawork").collection("job").aggregate([
             {
                 $lookup: {
@@ -331,8 +331,121 @@ router.post("/api/search_term", cors(), async (req, res) => {
             },
             {
                 $match: {
-                   /*  "applications.user_id": { $ne: userId }, */
-                    // Filtro de término de búsqueda
+                    "title": { $regex: id, $options: 'i' } // 'i' para búsqueda insensible a mayúsculas/minúsculas
+                }
+            },
+            {
+                $lookup: {
+                    from: "user", // Suponiendo que la colección "user" contiene la información de la empresa o empleador
+                    localField: "user_id", // Relacionamos el campo user_id del trabajo con el _id del usuario/empresa
+                    foreignField: "_id",
+                    as: "userInfo"
+                }
+            },
+            {
+                $unwind: "$userInfo"
+            },
+            /*      {
+                     $project: {
+                         "applications": 0
+                     }
+                 } */
+        ]).toArray();
+
+        /*     const user = await clientDB.db("opawork").collection("user").findOne({ _id: new ObjectId(id) }) */
+        /*   console.log(user); */
+
+        /*       const jobs = await clientDB.db("opawork").collection("job").aggregate([
+                     {
+                         $lookup: {
+                             from: "application",
+                             localField: "_id",
+                             foreignField: "job_id",
+                             as: "applications"
+                         }
+                     },
+                     {
+                         $match: {
+                             "applications.user_id": { $ne: userId } 
+                         }
+                     },
+                     {
+                         $project: {
+                             applications: 0
+                         }
+                     }
+                 ]).toArray(); 
+     */
+
+
+
+        if (!jobsBD.length) {
+            return res.status(404).json({ error: 'No hay trabajos disponibles' });
+        }
+
+        const jobs = jobsBD.map(job => ({
+            matchp:"Debes loguearte",
+            message:"Exito",
+            job: job
+        }));
+        console.log(jobsBD)
+        return res.status(200).json({
+            message: 'Búsqueda exitosa',
+            jobs: jobs
+        });
+    } catch (error) {
+        console.error('Error al buscar trabajos:', error);
+        return res.status(500).json({ error: 'Error interno del servidor' });
+    } finally {
+        await clientDB.close(); // Cierra la conexión a la base de datos en todos los casos
+    }
+});
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+router.post("/api/matcsssssh/:searchTerm", cors(), async (req, res) => {
+    res.setHeader('Content-Type', 'application/json');
+    res.setHeader('Cache-Control', 's-max-age=1, stale-while-revalidate');
+    res.setHeader('Access-Control-Allow-Origin', /* 'https://opawork.vercel.app' */'http://localhost:3000');
+    try {
+        const { searchTerm } = req.params;
+        await clientDB.connect();
+        console.log(searchTerm);
+
+        const jobsBD = await clientDB.db("opawork").collection("job").aggregate([
+            {
+                $lookup: {
+                    from: "application",
+                    localField: "_id",
+                    foreignField: "job_id",
+                    as: "applications"
+                }
+            },
+            {
+                $match: {
                     "title": { $regex: searchTerm, $options: 'i' } // 'i' para búsqueda insensible a mayúsculas/minúsculas
                 }
             },
@@ -347,24 +460,69 @@ router.post("/api/search_term", cors(), async (req, res) => {
             {
                 $unwind: "$userInfo"
             },
-            {
-                $project: {
-                    "applications": 0
-                }
-            }
+            /*      {
+                     $project: {
+                         "applications": 0
+                     }
+                 } */
         ]).toArray();
 
-        /*    await uploadFileToS3(req.file) */
+        /*     const user = await clientDB.db("opawork").collection("user").findOne({ _id: new ObjectId(id) }) */
+        /*   console.log(user); */
 
-        res.json({
-            success: 200,
-            message: "Archivo subido exitosamente!",
+        /*       const jobs = await clientDB.db("opawork").collection("job").aggregate([
+                     {
+                         $lookup: {
+                             from: "application",
+                             localField: "_id",
+                             foreignField: "job_id",
+                             as: "applications"
+                         }
+                     },
+                     {
+                         $match: {
+                             "applications.user_id": { $ne: userId } 
+                         }
+                     },
+                     {
+                         $project: {
+                             applications: 0
+                         }
+                     }
+                 ]).toArray(); 
+     */
+
+
+
+        if (!jobsBD.length) {
+            return res.status(404).json({ error: 'No hay trabajos disponibles' });
+        }
+
+        /*   const jobs = jobsBD.map(job => ({
+              matchp: calculateMatch(user, job),
+              job: job
+          })); */
+        console.log(jobsBD)
+        return res.status(200).json({
+            message: 'Búsqueda exitosa',
             jobs: jobsBD
         });
     } catch (error) {
-        res.status(500).send(error.message);
+        console.error('Error al buscar trabajos:', error);
+        return res.status(500).json({ error: 'Error interno del servidor' });
+    } finally {
+        await clientDB.close(); // Cierra la conexión a la base de datos en todos los casos
     }
 });
+
+
+
+
+
+
+
+
+
 
 
 
@@ -1596,9 +1754,9 @@ router.get("/api/postulations/:id", cors(), async (req, res) => {
 });
 
 router.post("/api/postulate", async (req, res) => {
-        /*     res.setHeader('Content-Type', 'application/json'); */
-        res.setHeader('Cache-Control', 's-max-age=1, stale-while-revalidate');
-        res.setHeader('Access-Control-Allow-Origin', 'http://localhost:3000');
+    /*     res.setHeader('Content-Type', 'application/json'); */
+    res.setHeader('Cache-Control', 's-max-age=1, stale-while-revalidate');
+    res.setHeader('Access-Control-Allow-Origin', 'http://localhost:3000');
     try {
         const { jobId, userId, bussinesId } = req.body;
         console.log(jobId, userId, bussinesId);
@@ -1633,9 +1791,9 @@ router.post("/api/postulate", async (req, res) => {
     }
 })
 router.post("/api/mark_user-view", async (req, res) => {
-        /*     res.setHeader('Content-Type', 'application/json'); */
-        res.setHeader('Cache-Control', 's-max-age=1, stale-while-revalidate');
-        res.setHeader('Access-Control-Allow-Origin', 'http://localhost:3000');
+    /*     res.setHeader('Content-Type', 'application/json'); */
+    res.setHeader('Cache-Control', 's-max-age=1, stale-while-revalidate');
+    res.setHeader('Access-Control-Allow-Origin', 'http://localhost:3000');
     try {
         const { _id } = req.body;
 
@@ -1669,9 +1827,9 @@ router.post("/api/mark_user-view", async (req, res) => {
 
 
 router.post("/api/create_advise/:id", async (req, res) => {
-        /*     res.setHeader('Content-Type', 'application/json'); */
-        res.setHeader('Cache-Control', 's-max-age=1, stale-while-revalidate');
-        res.setHeader('Access-Control-Allow-Origin', 'http://localhost:3000');
+    /*     res.setHeader('Content-Type', 'application/json'); */
+    res.setHeader('Cache-Control', 's-max-age=1, stale-while-revalidate');
+    res.setHeader('Access-Control-Allow-Origin', 'http://localhost:3000');
     try {
         const { id } = req.params; // Corregir la desestructuración de params
         const { title, description, street, type, salary, experience, requirements, benefits, typeTime, company, sector,
