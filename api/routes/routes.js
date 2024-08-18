@@ -46,7 +46,7 @@ router.get("/", (req, res) => {
 router.get("/api/advise/:id", async (req, res) => {
     res.setHeader('Content-Type', 'application/json');
     res.setHeader('Cache-Control', 's-max-age=1, stale-while-revalidate');
-    res.setHeader('Access-Control-Allow-Origin',  'https://opawork.vercel.app, http://localhost:3000');
+    res.setHeader('Access-Control-Allow-Origin',  'https://opawork.vercel.app');
     res.setHeader('Access-Control-Allow-Credentials', "true");
     try {
         const { id } = req.params;
@@ -95,7 +95,7 @@ router.get("/api/advise/:id", async (req, res) => {
 router.get("/api/all_advises/:id", async (req, res) => {
     res.setHeader('Content-Type', 'application/json');
     res.setHeader('Cache-Control', 's-max-age=1, stale-while-revalidate');
-    res.setHeader('Access-Control-Allow-Origin',  'https://opawork.vercel.app, http://localhost:3000');
+    res.setHeader('Access-Control-Allow-Origin',  'https://opawork.vercel.app');
     try {
         const { id } = req.params;
         if (!id) {
@@ -430,7 +430,7 @@ router.get("/api/match/explorer/:id", cors(), async (req, res) => {
 router.post("/api/matcsssssh/:searchTerm", cors(), async (req, res) => {
     res.setHeader('Content-Type', 'application/json');
     res.setHeader('Cache-Control', 's-max-age=1, stale-while-revalidate');
-    res.setHeader('Access-Control-Allow-Origin',  'https://opawork.vercel.app, http://localhost:3000');
+    res.setHeader('Access-Control-Allow-Origin',  'https://opawork.vercel.app');
     try {
         const { searchTerm } = req.params;
         await clientDB.connect();
@@ -572,7 +572,7 @@ router.post("/api/matcsssssh/:searchTerm", cors(), async (req, res) => {
 router.post("/api/upload_profile_image", cors(), async (req, res) => {
     /*     res.setHeader('Content-Type', 'application/json'); */
     res.setHeader('Cache-Control', 's-max-age=1, stale-while-revalidate');
-    res.setHeader('Access-Control-Allow-Origin',  'https://opawork.vercel.app, http://localhost:3000');
+    res.setHeader('Access-Control-Allow-Origin',  'https://opawork.vercel.app');
     const { image, id } = req.body
     console.log(image, id)
     try {
@@ -613,7 +613,7 @@ router.post("/api/upload_profile_image", cors(), async (req, res) => {
 router.post("/api/update_personal_information", cors(), async (req, res) => {
     /*     res.setHeader('Content-Type', 'application/json'); */
     res.setHeader('Cache-Control', 's-max-age=1, stale-while-revalidate');
-    res.setHeader('Access-Control-Allow-Origin',  'https://opawork.vercel.app, http://localhost:3000');
+    res.setHeader('Access-Control-Allow-Origin',  'https://opawork.vercel.app');
     const { user_info } = req.body
     console.log("descripcion" + user_info.id, user_info.ciudad, user_info.direccion, user_info.celular, user_info.pais)
     try {
@@ -665,7 +665,7 @@ router.post("/api/update_personal_information", cors(), async (req, res) => {
 router.post("/api/add_user_lenguage/:id", cors(), async (req, res) => {
     /*     res.setHeader('Content-Type', 'application/json'); */
     res.setHeader('Cache-Control', 's-max-age=1, stale-while-revalidate');
-    res.setHeader('Access-Control-Allow-Origin',  'https://opawork.vercel.app, http://localhost:3000');
+    res.setHeader('Access-Control-Allow-Origin',  'https://opawork.vercel.app');
     const { lenguages } = req.body
     const { id } = req.params
     console.log("id: " + id)
@@ -708,7 +708,7 @@ router.post("/api/add_user_lenguage/:id", cors(), async (req, res) => {
 router.post("/api/add_work_experience/:id", cors(), async (req, res) => {
     /*     res.setHeader('Content-Type', 'application/json'); */
     res.setHeader('Cache-Control', 's-max-age=1, stale-while-revalidate');
-    res.setHeader('Access-Control-Allow-Origin',  'https://opawork.vercel.app, http://localhost:3000');
+    res.setHeader('Access-Control-Allow-Origin',  'https://opawork.vercel.app');
     const { work_experience } = req.body
     const { id } = req.params
     console.log("id: " + id)
@@ -746,7 +746,7 @@ router.post("/api/add_work_experience/:id", cors(), async (req, res) => {
 router.post("/api/add_education_experience/:id", cors(), async (req, res) => {
     /*     res.setHeader('Content-Type', 'application/json'); */
     res.setHeader('Cache-Control', 's-max-age=1, stale-while-revalidate');
-    res.setHeader('Access-Control-Allow-Origin',  'https://opawork.vercel.app, http://localhost:3000');
+    res.setHeader('Access-Control-Allow-Origin',  'https://opawork.vercel.app');
     const { ed } = req.body
     const { id } = req.params
     console.log("ed: " + ed)
@@ -790,7 +790,7 @@ router.post("/api/add_education_experience/:id", cors(), async (req, res) => {
 router.get("/api/get_lenguages_user/:id", cors(), async (req, res) => {
     /*     res.setHeader('Content-Type', 'application/json'); */
     res.setHeader('Cache-Control', 's-max-age=1, stale-while-revalidate');
-    res.setHeader('Access-Control-Allow-Origin',  'https://opawork.vercel.app, http://localhost:3000');
+    res.setHeader('Access-Control-Allow-Origin',  'https://opawork.vercel.app');
     const { id } = req.params
     console.log("leng: " + id)
     try {
@@ -814,7 +814,7 @@ router.get("/api/get_lenguages_user/:id", cors(), async (req, res) => {
 router.get("/api/get_education_user/:id", cors(), async (req, res) => {
     /*     res.setHeader('Content-Type', 'application/json'); */
     res.setHeader('Cache-Control', 's-max-age=1, stale-while-revalidate');
-    res.setHeader('Access-Control-Allow-Origin',  'https://opawork.vercel.app, http://localhost:3000');
+    res.setHeader('Access-Control-Allow-Origin',  'https://opawork.vercel.app');
     const { id } = req.params
     console.log("eds: " + id)
     try {
@@ -841,7 +841,7 @@ router.get("/api/get_education_user/:id", cors(), async (req, res) => {
 router.get("/api/get_information_user/:id", cors(), async (req, res) => {
     /*     res.setHeader('Content-Type', 'application/json'); */
     res.setHeader('Cache-Control', 's-max-age=1, stale-while-revalidate');
-    res.setHeader('Access-Control-Allow-Origin',  'https://opawork.vercel.app, http://localhost:3000');
+    res.setHeader('Access-Control-Allow-Origin',  'https://opawork.vercel.app');
     const { user_id } = req.params
     console.log("user:  " + id)
     try {
@@ -865,7 +865,7 @@ router.get("/api/get_information_user/:id", cors(), async (req, res) => {
 
 router.delete("/api/delete_education_user/:id", cors(), async (req, res) => {
     res.setHeader('Cache-Control', 's-max-age=1, stale-while-revalidate');
-    res.setHeader('Access-Control-Allow-Origin',  'https://opawork.vercel.app, http://localhost:3000');
+    res.setHeader('Access-Control-Allow-Origin',  'https://opawork.vercel.app');
     const { id } = req.params;
     const { idItem } = req.body;
 
@@ -900,7 +900,7 @@ router.delete("/api/delete_education_user/:id", cors(), async (req, res) => {
 
 router.delete("/api/delete_user_lenguage/:id", cors(), async (req, res) => {
     res.setHeader('Cache-Control', 's-max-age=1, stale-while-revalidate');
-    res.setHeader('Access-Control-Allow-Origin',  'https://opawork.vercel.app, http://localhost:3000');
+    res.setHeader('Access-Control-Allow-Origin',  'https://opawork.vercel.app');
     const { id } = req.params;
     const { lenguage } = req.body;
 
@@ -999,7 +999,7 @@ router.delete("/api/delete_user_lenguage/:id", cors(), async (req, res) => {
 router.get("/api/get_job/:id", cors(), async (req, res) => {
     res.setHeader('Content-Type', 'application/json');
     res.setHeader('Cache-Control', 's-max-age=1, stale-while-revalidate');
-    res.setHeader('Access-Control-Allow-Origin',  'https://opawork.vercel.app, http://localhost:3000');
+    res.setHeader('Access-Control-Allow-Origin',  'https://opawork.vercel.app');
     const { id } = req.params
     console.log("id job: " + id)
     try {
@@ -1036,7 +1036,7 @@ router.get("/api/get_job/:id", cors(), async (req, res) => {
 router.get("/api/get_advises_by_bussines/:id", cors(), async (req, res) => {
     res.setHeader('Content-Type', 'application/json');
     res.setHeader('Cache-Control', 's-max-age=1, stale-while-revalidate');
-    res.setHeader('Access-Control-Allow-Origin',  'https://opawork.vercel.app, http://localhost:3000');
+    res.setHeader('Access-Control-Allow-Origin',  'https://opawork.vercel.app');
     const { id } = req.params
     console.log("id job: " + id)
     try {
@@ -1081,7 +1081,7 @@ router.get("/api/get_advises_by_bussines/:id", cors(), async (req, res) => {
 router.get("/api/get_works_user/:id", cors(), async (req, res) => {
     /*     res.setHeader('Content-Type', 'application/json'); */
     res.setHeader('Cache-Control', 's-max-age=1, stale-while-revalidate');
-    res.setHeader('Access-Control-Allow-Origin',  'https://opawork.vercel.app, http://localhost:3000');
+    res.setHeader('Access-Control-Allow-Origin',  'https://opawork.vercel.app');
     const { id } = req.params
     console.log("eds: " + id)
     try {
@@ -1106,7 +1106,7 @@ router.get("/api/get_works_user/:id", cors(), async (req, res) => {
 
 router.delete("/api/delete_work_user/:id", cors(), async (req, res) => {
     res.setHeader('Cache-Control', 's-max-age=1, stale-while-revalidate');
-    res.setHeader('Access-Control-Allow-Origin',  'https://opawork.vercel.app, http://localhost:3000');
+    res.setHeader('Access-Control-Allow-Origin',  'https://opawork.vercel.app');
     const { id } = req.params;
     const { idItem } = req.body;
 
@@ -1172,7 +1172,7 @@ router.delete("/api/delete_work_user/:id", cors(), async (req, res) => {
 router.post("/api/update_benefits_advise_by_user/:id", cors(), async (req, res) => {
     res.setHeader('Content-Type', 'application/json');
     res.setHeader('Cache-Control', 's-max-age=1, stale-while-revalidate');
-    res.setHeader('Access-Control-Allow-Origin',  'https://opawork.vercel.app, http://localhost:3000');
+    res.setHeader('Access-Control-Allow-Origin',  'https://opawork.vercel.app');
 
     const { id } = req.params;  // Cambiado _id a id para mayor claridad
     const { benefitsJob, company, title, description } = req.body;
@@ -1222,7 +1222,7 @@ router.post("/api/update_benefits_advise_by_user/:id", cors(), async (req, res) 
 router.post("/api/update_mod_advise_by_user/:id", cors(), async (req, res) => {
     res.setHeader('Content-Type', 'application/json');
     res.setHeader('Cache-Control', 's-max-age=1, stale-while-revalidate');
-    res.setHeader('Access-Control-Allow-Origin',  'https://opawork.vercel.app, http://localhost:3000');
+    res.setHeader('Access-Control-Allow-Origin',  'https://opawork.vercel.app');
 
     const { id } = req.params;  // Cambiado _id a id para mayor claridad
     const { modJob } = req.body;
@@ -1279,7 +1279,7 @@ router.post("/api/update_mod_advise_by_user/:id", cors(), async (req, res) => {
 router.delete("/api/delete_contact_user/:id", cors(), async (req, res) => {
     res.setHeader('Content-Type', 'application/json');
     res.setHeader('Cache-Control', 's-max-age=1, stale-while-revalidate');
-    res.setHeader('Access-Control-Allow-Origin',  'https://opawork.vercel.app, http://localhost:3000');
+    res.setHeader('Access-Control-Allow-Origin',  'https://opawork.vercel.app');
     const { name } = req.body
     const { id } = req.params
     console.log(id, name)
@@ -1311,7 +1311,7 @@ router.delete("/api/delete_contact_user/:id", cors(), async (req, res) => {
 router.post("/api/update_benefits_user/:id", cors(), async (req, res) => {
     res.setHeader('Content-Type', 'application/json');
     res.setHeader('Cache-Control', 's-max-age=1, stale-while-revalidate');
-    res.setHeader('Access-Control-Allow-Origin',  'https://opawork.vercel.app, http://localhost:3000');
+    res.setHeader('Access-Control-Allow-Origin',  'https://opawork.vercel.app');
     const { benefits_user } = req.body
     const { id } = req.params
     console.log(id, benefits_user)
@@ -1346,7 +1346,7 @@ router.post("/api/update_benefits_user/:id", cors(), async (req, res) => {
 router.delete("/api/delete_benefits_user/:id", cors(), async (req, res) => {
     res.setHeader('Content-Type', 'application/json');
     res.setHeader('Cache-Control', 's-max-age=1, stale-while-revalidate');
-    res.setHeader('Access-Control-Allow-Origin',  'https://opawork.vercel.app, http://localhost:3000');
+    res.setHeader('Access-Control-Allow-Origin',  'https://opawork.vercel.app');
     const { name } = req.body
     const { id } = req.params
     console.log(id, name)
@@ -1381,7 +1381,7 @@ router.delete("/api/delete_benefits_user/:id", cors(), async (req, res) => {
 router.delete("/api/delete_knoledge_user/:id", cors(), async (req, res) => {
     res.setHeader('Content-Type', 'application/json');
     res.setHeader('Cache-Control', 's-max-age=1, stale-while-revalidate');
-    res.setHeader('Access-Control-Allow-Origin',  'https://opawork.vercel.app, http://localhost:3000');
+    res.setHeader('Access-Control-Allow-Origin',  'https://opawork.vercel.app');
     const { name } = req.body
     const { id } = req.params
     console.log(id, name)
@@ -1414,7 +1414,7 @@ router.delete("/api/delete_knoledge_user/:id", cors(), async (req, res) => {
 router.get("/api/get_benefits_user/:id", cors(), async (req, res) => {
     res.setHeader('Content-Type', 'application/json');
     res.setHeader('Cache-Control', 's-max-age=1, stale-while-revalidate');
-    res.setHeader('Access-Control-Allow-Origin',  'https://opawork.vercel.app, http://localhost:3000');
+    res.setHeader('Access-Control-Allow-Origin',  'https://opawork.vercel.app');
     const { id } = req.params
     try {
         if (!id) {
@@ -1435,7 +1435,7 @@ router.get("/api/get_benefits_user/:id", cors(), async (req, res) => {
 router.get("/api/update_knoledge_user/:id", cors(), async (req, res) => {
     res.setHeader('Content-Type', 'application/json');
     res.setHeader('Cache-Control', 's-max-age=1, stale-while-revalidate');
-    res.setHeader('Access-Control-Allow-Origin',  'https://opawork.vercel.app, http://localhost:3000');
+    res.setHeader('Access-Control-Allow-Origin',  'https://opawork.vercel.app');
     const { id } = req.params
     try {
         if (!id) {
@@ -1456,7 +1456,7 @@ router.get("/api/update_knoledge_user/:id", cors(), async (req, res) => {
 router.get("/api/get_knoledge_user/:id", cors(), async (req, res) => {
     res.setHeader('Content-Type', 'application/json');
     res.setHeader('Cache-Control', 's-max-age=1, stale-while-revalidate');
-    res.setHeader('Access-Control-Allow-Origin',  'https://opawork.vercel.app, http://localhost:3000');
+    res.setHeader('Access-Control-Allow-Origin',  'https://opawork.vercel.app');
     const { id } = req.params
     try {
         if (!id) {
@@ -1480,7 +1480,7 @@ router.get("/api/get_knoledge_user/:id", cors(), async (req, res) => {
 router.post("/api/update_contact_user/:id", cors(), async (req, res) => {
     /*     res.setHeader('Content-Type', 'application/json'); */
     res.setHeader('Cache-Control', 's-max-age=1, stale-while-revalidate');
-    res.setHeader('Access-Control-Allow-Origin',  'https://opawork.vercel.app, http://localhost:3000');
+    res.setHeader('Access-Control-Allow-Origin',  'https://opawork.vercel.app');
     const { contact_info } = req.body
     const { id } = req.params
     console.log(contact_info)
@@ -1532,7 +1532,7 @@ router.post("/api/update_contact_user/:id", cors(), async (req, res) => {
 router.get("/api/get_contact_user/:id", cors(), async (req, res) => {
     /*     res.setHeader('Content-Type', 'application/json'); */
     res.setHeader('Cache-Control', 's-max-age=1, stale-while-revalidate');
-    res.setHeader('Access-Control-Allow-Origin',  'https://opawork.vercel.app, http://localhost:3000');
+    res.setHeader('Access-Control-Allow-Origin',  'https://opawork.vercel.app');
     const { _id } = req.params
     try {
         if (!_id) {
@@ -1555,7 +1555,7 @@ router.get("/api/get_contact_user/:id", cors(), async (req, res) => {
 router.post("/api/update_knoledge_user/:id", cors(), async (req, res) => {
     /*     res.setHeader('Content-Type', 'application/json'); */
     res.setHeader('Cache-Control', 's-max-age=1, stale-while-revalidate');
-    res.setHeader('Access-Control-Allow-Origin',  'https://opawork.vercel.app, http://localhost:3000');
+    res.setHeader('Access-Control-Allow-Origin',  'https://opawork.vercel.app');
     const { knoledge_info } = req.body
     const { id } = req.params
     console.log(knoledge_info)
@@ -1624,7 +1624,7 @@ router.post("/api/update_knoledge_user/:id", cors(), async (req, res) => {
 router.get("/api/get_description_user/:id", cors(), async (req, res) => {
     /*     res.setHeader('Content-Type', 'application/json'); */
     res.setHeader('Cache-Control', 's-max-age=1, stale-while-revalidate');
-    res.setHeader('Access-Control-Allow-Origin',  'https://opawork.vercel.app, http://localhost:3000');
+    res.setHeader('Access-Control-Allow-Origin',  'https://opawork.vercel.app');
     const { id } = req.params
     console.log("user: " + id)
     try {
@@ -1650,7 +1650,7 @@ router.get("/api/get_description_user/:id", cors(), async (req, res) => {
 router.post("/api/update_personal_about", cors(), async (req, res) => {
     res.setHeader('Content-Type', 'application/json');
     res.setHeader('Cache-Control', 's-max-age=1, stale-while-revalidate');
-    res.setHeader('Access-Control-Allow-Origin',  'https://opawork.vercel.app, http://localhost:3000');
+    res.setHeader('Access-Control-Allow-Origin',  'https://opawork.vercel.app');
     const { about } = req.body
     console.log("descripcion" + about.description, "id" + about.id)
     try {
@@ -1690,7 +1690,7 @@ router.post("/api/update_personal_about", cors(), async (req, res) => {
 router.get("/api/postulations/:id", cors(), async (req, res) => {
     /*     res.setHeader('Content-Type', 'application/json'); */
     res.setHeader('Cache-Control', 's-max-age=1, stale-while-revalidate');
-    res.setHeader('Access-Control-Allow-Origin',  'https://opawork.vercel.app, http://localhost:3000');
+    res.setHeader('Access-Control-Allow-Origin',  'https://opawork.vercel.app');
 
     try {
         const { id } = req.params;
@@ -1757,7 +1757,7 @@ router.get("/api/postulations/:id", cors(), async (req, res) => {
 router.post("/api/postulate", async (req, res) => {
     /*     res.setHeader('Content-Type', 'application/json'); */
     res.setHeader('Cache-Control', 's-max-age=1, stale-while-revalidate');
-    res.setHeader('Access-Control-Allow-Origin',  'https://opawork.vercel.app, http://localhost:3000');
+    res.setHeader('Access-Control-Allow-Origin',  'https://opawork.vercel.app');
     try {
         const { jobId, userId, bussinesId } = req.body;
         console.log(jobId, userId, bussinesId);
@@ -1794,7 +1794,7 @@ router.post("/api/postulate", async (req, res) => {
 router.post("/api/mark_user-view", async (req, res) => {
     /*     res.setHeader('Content-Type', 'application/json'); */
     res.setHeader('Cache-Control', 's-max-age=1, stale-while-revalidate');
-    res.setHeader('Access-Control-Allow-Origin',  'https://opawork.vercel.app, http://localhost:3000');
+    res.setHeader('Access-Control-Allow-Origin',  'https://opawork.vercel.app');
     try {
         const { _id } = req.body;
 
@@ -1830,7 +1830,7 @@ router.post("/api/mark_user-view", async (req, res) => {
 router.post("/api/create_advise/:id", async (req, res) => {
     /*     res.setHeader('Content-Type', 'application/json'); */
     res.setHeader('Cache-Control', 's-max-age=1, stale-while-revalidate');
-    res.setHeader('Access-Control-Allow-Origin',  'https://opawork.vercel.app, http://localhost:3000');
+    res.setHeader('Access-Control-Allow-Origin',  'https://opawork.vercel.app');
     try {
         const { id } = req.params; // Corregir la desestructuración de params
         const { title, description, street, type, salary, experience, requirements, benefits, typeTime, company, sector,
@@ -1930,7 +1930,7 @@ router.post("/api/create_advise/:id", async (req, res) => {
 router.post('/api/login_account', async (req, res) => {
     res.setHeader('Content-Type', 'application/json');
     res.setHeader('Cache-Control', 's-max-age=1, stale-while-revalidate');
-    res.setHeader('Access-Control-Allow-Origin',  'https://opawork.vercel.app, http://localhost:3000');
+    res.setHeader('Access-Control-Allow-Origin',  'https://opawork.vercel.app');
     res.setHeader('Access-Control-Allow-Credentials', "true");
     const { uLogin } = req.body;
     console.log(uLogin)
@@ -1975,6 +1975,7 @@ router.post('/api/login_account', async (req, res) => {
             }
         });
     } catch (err) {
+
         console.error(err.message);
         res.status(500).send('Error en el servidor');
     }
@@ -1983,11 +1984,10 @@ router.post('/api/login_account', async (req, res) => {
 
 
 
-
 router.post('/api/register_account', async (req, res) => {
     res.setHeader('Content-Type', 'application/json');
     res.setHeader('Cache-Control', 's-max-age=1, stale-while-revalidate');
-    res.setHeader('Access-Control-Allow-Origin',  'https://opawork.vercel.app, http://localhost:3000');
+    res.setHeader('Access-Control-Allow-Origin',  'https://opawork.vercel.app');
     res.setHeader('Access-Control-Allow-Credentials', "true");
 
     const { uRegister } = req.body;
