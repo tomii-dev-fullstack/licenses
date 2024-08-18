@@ -142,7 +142,7 @@ router.get("/api/all_advises/:id", async (req, res) => {
 router.post("/api/login", cors(), async (req, res) => {
     res.setHeader('Content-Type', 'application/json');
     res.setHeader('Cache-Control', 's-max-age=1, stale-while-revalidate');
-    res.setHeader('Access-Control-Allow-Origin',  'https://opawork.vercel.app, http://localhost:3000');
+    res.setHeader('Access-Control-Allow-Origin',  'https://opawork.vercel.app');
     res.setHeader('Access-Control-Allow-Credentials', "true");
     const { token } = req.body;
 
@@ -207,7 +207,7 @@ router.post("/api/login", cors(), async (req, res) => {
 router.get("/api/match/:id", /* cors(), */ async (req, res) => {
     res.setHeader('Content-Type', 'application/json');
     res.setHeader('Cache-Control', 's-max-age=1, stale-while-revalidate');
-    res.setHeader('Access-Control-Allow-Origin',  'https://opawork.vercel.app, http://localhost:3000');
+    res.setHeader('Access-Control-Allow-Origin',  'https://opawork.vercel.app');
 
     const { id } = req.params;
 
@@ -313,7 +313,7 @@ router.get("/api/match/:id", /* cors(), */ async (req, res) => {
 router.get("/api/match/explorer/:id", cors(), async (req, res) => {
     res.setHeader('Content-Type', 'application/json');
     res.setHeader('Cache-Control', 's-max-age=1, stale-while-revalidate');
-    res.setHeader('Access-Control-Allow-Origin',  'https://opawork.vercel.app, http://localhost:3000');
+    res.setHeader('Access-Control-Allow-Origin',  'https://opawork.vercel.app');
     const { id } = req.params
 
     try {
@@ -2060,7 +2060,7 @@ router.post('/api/register_account', async (req, res) => {
 router.post("/api/all_advises_bussines/:id", async (req, res) => {
     res.setHeader('Content-Type', 'application/json');
     res.setHeader('Cache-Control', 's-max-age=1, stale-while-revalidate');
-    res.setHeader('Access-Control-Allow-Origin',  'https://opawork.vercel.app, http://localhost:3000');
+    res.setHeader('Access-Control-Allow-Origin',  'https://opawork.vercel.app');
     try {
         const { id } = req.params;
         if (!id) {
