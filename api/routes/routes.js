@@ -8,7 +8,8 @@ import { send } from "../nodemailer/config.js"
 import jwt from "jsonwebtoken"
 import bcrypt from "bcrypt"
 import { Payment, MercadoPagoConfig, Preference } from "mercadopago"
-import { calculateMatch } from "../match.js"
+/* import { calculateMatch } from "../match.js"
+import { calculateMatchByUserByJob } from "../objet-match.js"; */
 const router = Router()
 const client = new MercadoPagoConfig({
     accessToken: "TEST-5387852327876700-073110-755bd3bd40e2672d39bea5dad3cfbbec-360175350",
@@ -46,16 +47,16 @@ router.get("/", (req, res) => {
 router.get("/api/advise/:id", async (req, res) => {
     res.setHeader('Content-Type', 'application/json');
     res.setHeader('Cache-Control', 's-max-age=1, stale-while-revalidate');
-    res.setHeader('Access-Control-Allow-Origin',  'https://opawork.vercel.app');
+    res.setHeader('Access-Control-Allow-Origin', /* 'https://opawork.vercel.app' */'http://localhost:3000');
     res.setHeader('Access-Control-Allow-Credentials', "true");
     try {
         const { id } = req.params;
+        console.log(id);
         if (!id) {
             return res.status(400).json({ message: 'user_id is required' });
         }
         await clientDB.connect();
 
-        console.log(id)
         const applications = await clientDB.db("opawork").collection("application").aggregate([
             {
                 $match: {
@@ -72,17 +73,41 @@ router.get("/api/advise/:id", async (req, res) => {
             },
             {
                 $unwind: "$userDetails" // Desenrollamos el array resultante para acceder a los detalles de la aplicación
+            },
+            {
+                $lookup: {
+                    from: "job", // Nombre de la colección de aplicaciones
+                    localField: "job_id", // Campo en la colección de trabajos que contiene el ID del trabajo
+                    foreignField: "_id", // Campo en la colección de aplicaciones que referencia el ID del trabajo
+                    as: "jobDetails" // Nombre del array resultante
+                }
+            },
+            {
+                $unwind: "$jobDetails" // Desenrollamos el array resultante para acceder a los detalles de la aplicación
             }
         ]).toArray();
-        console.log(applications)
-        if (applications.length > 0) {
-            res.status(200).json(applications);
-            /*      clientDB.close(); */
+        /*   const user = await clientDB.db("opawork").collection("user").findOne({ _id: new ObjectId(user_id) }) */
+        console.log(applications);
+        /*   const ap = applications.map(app => ({
+             matchp: calculateMatchByUserByJob(app.userDetails, app.jobDetails),
+             u: app
+         })); */
+        console.log(ap)
+        if (ap.length > 0) {
+            res.status(200).json(ap);
+
         } else {
             res.status(404).json({ message: 'No se encontraron postulaciones para el usuario dado' });
-            /*     clientDB.close(); */
-        }
 
+        }
+        /*   if (applications.length > 0) {
+              res.status(200).json(applications);
+           
+          } else {
+              res.status(404).json({ message: 'No se encontraron postulaciones para el usuario dado' });
+              
+          }
+   */
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: 'An error occurred while processing your request', error: error.message });
@@ -95,7 +120,7 @@ router.get("/api/advise/:id", async (req, res) => {
 router.get("/api/all_advises/:id", async (req, res) => {
     res.setHeader('Content-Type', 'application/json');
     res.setHeader('Cache-Control', 's-max-age=1, stale-while-revalidate');
-    res.setHeader('Access-Control-Allow-Origin',  'https://opawork.vercel.app');
+    res.setHeader('Access-Control-Allow-Origin', /* 'https://opawork.vercel.app' */'http://localhost:3000');
     try {
         const { id } = req.params;
         if (!id) {
@@ -139,13 +164,76 @@ router.get("/api/all_advises/:id", async (req, res) => {
         clientDB.close();
     }
 })
+
+
+
+
+
+
+
+
+
+ router.get('/api/check-auth', (req, res) => {
+    const token = req.cookies;
+    console.log(token);
+
+    if (!token) {
+        return res.status(401).json({ error: 'No autorizado' });
+    }
+
+    try {
+        const decoded = jwt.verify(token.sessionToken, process.env.JWT_SECRET);
+        res.status(200).json({
+            user: {
+                id: decoded.id,
+                email: decoded.email,
+            }
+        });
+    } catch (error) {
+        console.error('Error verifying token:', error);
+        res.status(401).json({ error: 'No autorizado' });
+    }
+});
+router.post('/api/logout', (req, res) => {
+    // Elimina la cookie de sesión
+    res.clearCookie('sessionToken', {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'Strict'
+    });
+
+    // Responde con un mensaje de éxito
+    res.status(200).json({ message: 'Logout exitoso' });
+});
+ 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 router.post("/api/login", cors(), async (req, res) => {
     res.setHeader('Content-Type', 'application/json');
     res.setHeader('Cache-Control', 's-max-age=1, stale-while-revalidate');
-    res.setHeader('Access-Control-Allow-Origin',  'https://opawork.vercel.app');
+    res.setHeader('Access-Control-Allow-Origin', 'http://localhost:3030');
     res.setHeader('Access-Control-Allow-Credentials', "true");
-    const { token } = req.body;
 
+    const { token } = req.body;
     if (!token) {
         return res.status(401).json({ error: 'Token inválido' });
     }
@@ -153,61 +241,54 @@ router.post("/api/login", cors(), async (req, res) => {
     try {
         // Verificar el token de Google con Firebase Admin
         const decodedToken = await auth.verifyIdToken(token);
-        console.log(decodedToken);
         const userEmail = decodedToken.email;
 
         // Buscar usuario en la base de datos
-        await clientDB.connect()
-        const user = await clientDB.db("opawork").collection("user").findOne({ email: userEmail });
+        await clientDB.connect();
+        const user = await clientDB.db("mercado").collection("user").findOne({ email: userEmail });
 
         if (!user) {
             return res.status(404).json({ error: 'Usuario no encontrado' });
         }
 
-        // Generar un token de sesión (puedes usar el mismo token o un JWT personalizado)
-        const sessionToken = token; // Para simplicidad, estamos usando el mismo token
+        // Generar un JWT personalizado
+        const sessionToken = jwt.sign(
+            {
+                id: user._id,
+                email: user.email,
+
+                /*      nombre: user.nombre, */
+                // Puedes agregar más datos aquí si es necesario
+            },
+            process.env.JWT_SECRET, // Asegúrate de tener una clave secreta en tu archivo .env
+            {
+                expiresIn: '30d', // El token expirará en 1 día
+            }
+        );
 
         // Configurar la cookie con el token de sesión
-        /*  res.cookie('session', sessionToken, {
-             httpOnly: true,
-             secure: process.env.NODE_ENV === 'production',
-         }); */
-
-        return res.status(200).json({
-            message: 'Login exitoso',
-            user: {
-                id: user._id,
-                name: user.nombre,
-                email: user.email,
-                photo: user.photo,
-                phone: user.phone,
-                city: user.city,
-                street: user.street,
-                country: user.country,
-                description: user.description,
-                contact_info: user.contact_info,
-                type: user.type,
-                benefits: user.benefits,
-                knoledge: user.knoledge,
-                first_experience: user.first_experience,
-                works_information: user.works_information,
-                education_information: user.education_information,
-                lenguages: user.lenguages,
-                // Añade otros campos que quieras devolver
-            }
+        res.cookie('sessionToken', sessionToken, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production', // Solo en HTTPS en producción
+            sameSite: 'Strict',
+            maxAge: 24 * 60 * 60 * 1000 // 1 día de vida útil
         });
+
+        // No devolvemos datos del usuario, solo confirmamos el login exitoso
+        return res.status(200).json({ message: 'Login exitoso' });
+
     } catch (error) {
         console.error('Error verifying token:', error);
         return res.status(401).json({ error: 'No autorizado' });
-    }
-    finally {
+    } finally {
         clientDB.close();
     }
-})
+});
+
 router.get("/api/match/:id", /* cors(), */ async (req, res) => {
     res.setHeader('Content-Type', 'application/json');
     res.setHeader('Cache-Control', 's-max-age=1, stale-while-revalidate');
-    res.setHeader('Access-Control-Allow-Origin',  'https://opawork.vercel.app');
+    res.setHeader('Access-Control-Allow-Origin', /* 'https://opawork.vercel.app' */'http://localhost:3000');
 
     const { id } = req.params;
 
@@ -289,10 +370,10 @@ router.get("/api/match/:id", /* cors(), */ async (req, res) => {
             return res.status(404).json({ error: 'No hay trabajos disponibles' });
         }
 
-        const jobs = jobsBD.map(job => ({
-            matchp: calculateMatch(user, job),
-            job: job
-        }));
+        /*  const jobs = jobsBD.map(job => ({
+             matchp: calculateMatch(user, job),
+             job: job
+         })); */
         console.log(jobs)
         return res.status(200).json({
             message: 'Búsqueda exitosa',
@@ -313,7 +394,7 @@ router.get("/api/match/:id", /* cors(), */ async (req, res) => {
 router.get("/api/match/explorer/:id", cors(), async (req, res) => {
     res.setHeader('Content-Type', 'application/json');
     res.setHeader('Cache-Control', 's-max-age=1, stale-while-revalidate');
-    res.setHeader('Access-Control-Allow-Origin',  'https://opawork.vercel.app');
+    res.setHeader('Access-Control-Allow-Origin', 'https://opawork.vercel.app');
     const { id } = req.params
 
     try {
@@ -385,8 +466,8 @@ router.get("/api/match/explorer/:id", cors(), async (req, res) => {
         }
 
         const jobs = jobsBD.map(job => ({
-            matchp:"Debes loguearte",
-            message:"Exito",
+            matchp: "Debes loguearte",
+            message: "Exito",
             job: job
         }));
         console.log(jobsBD)
@@ -430,7 +511,7 @@ router.get("/api/match/explorer/:id", cors(), async (req, res) => {
 router.post("/api/matcsssssh/:searchTerm", cors(), async (req, res) => {
     res.setHeader('Content-Type', 'application/json');
     res.setHeader('Cache-Control', 's-max-age=1, stale-while-revalidate');
-    res.setHeader('Access-Control-Allow-Origin',  'https://opawork.vercel.app');
+    res.setHeader('Access-Control-Allow-Origin', 'https://opawork.vercel.app');
     try {
         const { searchTerm } = req.params;
         await clientDB.connect();
@@ -572,7 +653,7 @@ router.post("/api/matcsssssh/:searchTerm", cors(), async (req, res) => {
 router.post("/api/upload_profile_image", cors(), async (req, res) => {
     /*     res.setHeader('Content-Type', 'application/json'); */
     res.setHeader('Cache-Control', 's-max-age=1, stale-while-revalidate');
-    res.setHeader('Access-Control-Allow-Origin',  'https://opawork.vercel.app');
+    res.setHeader('Access-Control-Allow-Origin', /* 'https://opawork.vercel.app' */'http://localhost:3000');
     const { image, id } = req.body
     console.log(image, id)
     try {
@@ -613,7 +694,7 @@ router.post("/api/upload_profile_image", cors(), async (req, res) => {
 router.post("/api/update_personal_information", cors(), async (req, res) => {
     /*     res.setHeader('Content-Type', 'application/json'); */
     res.setHeader('Cache-Control', 's-max-age=1, stale-while-revalidate');
-    res.setHeader('Access-Control-Allow-Origin',  'https://opawork.vercel.app');
+    res.setHeader('Access-Control-Allow-Origin', 'https://opawork.vercel.app');
     const { user_info } = req.body
     console.log("descripcion" + user_info.id, user_info.ciudad, user_info.direccion, user_info.celular, user_info.pais)
     try {
@@ -665,7 +746,7 @@ router.post("/api/update_personal_information", cors(), async (req, res) => {
 router.post("/api/add_user_lenguage/:id", cors(), async (req, res) => {
     /*     res.setHeader('Content-Type', 'application/json'); */
     res.setHeader('Cache-Control', 's-max-age=1, stale-while-revalidate');
-    res.setHeader('Access-Control-Allow-Origin',  'https://opawork.vercel.app');
+    res.setHeader('Access-Control-Allow-Origin', 'https://opawork.vercel.app');
     const { lenguages } = req.body
     const { id } = req.params
     console.log("id: " + id)
@@ -708,7 +789,7 @@ router.post("/api/add_user_lenguage/:id", cors(), async (req, res) => {
 router.post("/api/add_work_experience/:id", cors(), async (req, res) => {
     /*     res.setHeader('Content-Type', 'application/json'); */
     res.setHeader('Cache-Control', 's-max-age=1, stale-while-revalidate');
-    res.setHeader('Access-Control-Allow-Origin',  'https://opawork.vercel.app');
+    res.setHeader('Access-Control-Allow-Origin', 'https://opawork.vercel.app');
     const { work_experience } = req.body
     const { id } = req.params
     console.log("id: " + id)
@@ -746,7 +827,7 @@ router.post("/api/add_work_experience/:id", cors(), async (req, res) => {
 router.post("/api/add_education_experience/:id", cors(), async (req, res) => {
     /*     res.setHeader('Content-Type', 'application/json'); */
     res.setHeader('Cache-Control', 's-max-age=1, stale-while-revalidate');
-    res.setHeader('Access-Control-Allow-Origin',  'https://opawork.vercel.app');
+    res.setHeader('Access-Control-Allow-Origin', 'https://opawork.vercel.app');
     const { ed } = req.body
     const { id } = req.params
     console.log("ed: " + ed)
@@ -790,7 +871,7 @@ router.post("/api/add_education_experience/:id", cors(), async (req, res) => {
 router.get("/api/get_lenguages_user/:id", cors(), async (req, res) => {
     /*     res.setHeader('Content-Type', 'application/json'); */
     res.setHeader('Cache-Control', 's-max-age=1, stale-while-revalidate');
-    res.setHeader('Access-Control-Allow-Origin',  'https://opawork.vercel.app');
+    res.setHeader('Access-Control-Allow-Origin', /* 'https://opawork.vercel.app' */'http://localhost:3000');
     const { id } = req.params
     console.log("leng: " + id)
     try {
@@ -814,7 +895,7 @@ router.get("/api/get_lenguages_user/:id", cors(), async (req, res) => {
 router.get("/api/get_education_user/:id", cors(), async (req, res) => {
     /*     res.setHeader('Content-Type', 'application/json'); */
     res.setHeader('Cache-Control', 's-max-age=1, stale-while-revalidate');
-    res.setHeader('Access-Control-Allow-Origin',  'https://opawork.vercel.app');
+    res.setHeader('Access-Control-Allow-Origin', /* 'https://opawork.vercel.app' */'http://localhost:3000');
     const { id } = req.params
     console.log("eds: " + id)
     try {
@@ -841,7 +922,7 @@ router.get("/api/get_education_user/:id", cors(), async (req, res) => {
 router.get("/api/get_information_user/:id", cors(), async (req, res) => {
     /*     res.setHeader('Content-Type', 'application/json'); */
     res.setHeader('Cache-Control', 's-max-age=1, stale-while-revalidate');
-    res.setHeader('Access-Control-Allow-Origin',  'https://opawork.vercel.app');
+    res.setHeader('Access-Control-Allow-Origin', /* 'https://opawork.vercel.app' */'http://localhost:3000');
     const { user_id } = req.params
     console.log("user:  " + id)
     try {
@@ -865,7 +946,7 @@ router.get("/api/get_information_user/:id", cors(), async (req, res) => {
 
 router.delete("/api/delete_education_user/:id", cors(), async (req, res) => {
     res.setHeader('Cache-Control', 's-max-age=1, stale-while-revalidate');
-    res.setHeader('Access-Control-Allow-Origin',  'https://opawork.vercel.app');
+    res.setHeader('Access-Control-Allow-Origin', 'https://opawork.vercel.app');
     const { id } = req.params;
     const { idItem } = req.body;
 
@@ -900,7 +981,7 @@ router.delete("/api/delete_education_user/:id", cors(), async (req, res) => {
 
 router.delete("/api/delete_user_lenguage/:id", cors(), async (req, res) => {
     res.setHeader('Cache-Control', 's-max-age=1, stale-while-revalidate');
-    res.setHeader('Access-Control-Allow-Origin',  'https://opawork.vercel.app');
+    res.setHeader('Access-Control-Allow-Origin', 'https://opawork.vercel.app');
     const { id } = req.params;
     const { lenguage } = req.body;
 
@@ -999,7 +1080,7 @@ router.delete("/api/delete_user_lenguage/:id", cors(), async (req, res) => {
 router.get("/api/get_job/:id", cors(), async (req, res) => {
     res.setHeader('Content-Type', 'application/json');
     res.setHeader('Cache-Control', 's-max-age=1, stale-while-revalidate');
-    res.setHeader('Access-Control-Allow-Origin',  'https://opawork.vercel.app');
+    res.setHeader('Access-Control-Allow-Origin', /* 'https://opawork.vercel.app' */'http://localhost:3000');
     const { id } = req.params
     console.log("id job: " + id)
     try {
@@ -1036,7 +1117,7 @@ router.get("/api/get_job/:id", cors(), async (req, res) => {
 router.get("/api/get_advises_by_bussines/:id", cors(), async (req, res) => {
     res.setHeader('Content-Type', 'application/json');
     res.setHeader('Cache-Control', 's-max-age=1, stale-while-revalidate');
-    res.setHeader('Access-Control-Allow-Origin',  'https://opawork.vercel.app');
+    res.setHeader('Access-Control-Allow-Origin', /* 'https://opawork.vercel.app' */'http://localhost:3000');
     const { id } = req.params
     console.log("id job: " + id)
     try {
@@ -1081,7 +1162,7 @@ router.get("/api/get_advises_by_bussines/:id", cors(), async (req, res) => {
 router.get("/api/get_works_user/:id", cors(), async (req, res) => {
     /*     res.setHeader('Content-Type', 'application/json'); */
     res.setHeader('Cache-Control', 's-max-age=1, stale-while-revalidate');
-    res.setHeader('Access-Control-Allow-Origin',  'https://opawork.vercel.app');
+    res.setHeader('Access-Control-Allow-Origin', /* 'https://opawork.vercel.app' */'http://localhost:3000');
     const { id } = req.params
     console.log("eds: " + id)
     try {
@@ -1106,7 +1187,7 @@ router.get("/api/get_works_user/:id", cors(), async (req, res) => {
 
 router.delete("/api/delete_work_user/:id", cors(), async (req, res) => {
     res.setHeader('Cache-Control', 's-max-age=1, stale-while-revalidate');
-    res.setHeader('Access-Control-Allow-Origin',  'https://opawork.vercel.app');
+    res.setHeader('Access-Control-Allow-Origin', 'https://opawork.vercel.app');
     const { id } = req.params;
     const { idItem } = req.body;
 
@@ -1172,7 +1253,7 @@ router.delete("/api/delete_work_user/:id", cors(), async (req, res) => {
 router.post("/api/update_benefits_advise_by_user/:id", cors(), async (req, res) => {
     res.setHeader('Content-Type', 'application/json');
     res.setHeader('Cache-Control', 's-max-age=1, stale-while-revalidate');
-    res.setHeader('Access-Control-Allow-Origin',  'https://opawork.vercel.app');
+    res.setHeader('Access-Control-Allow-Origin', 'https://opawork.vercel.app');
 
     const { id } = req.params;  // Cambiado _id a id para mayor claridad
     const { benefitsJob, company, title, description } = req.body;
@@ -1222,7 +1303,7 @@ router.post("/api/update_benefits_advise_by_user/:id", cors(), async (req, res) 
 router.post("/api/update_mod_advise_by_user/:id", cors(), async (req, res) => {
     res.setHeader('Content-Type', 'application/json');
     res.setHeader('Cache-Control', 's-max-age=1, stale-while-revalidate');
-    res.setHeader('Access-Control-Allow-Origin',  'https://opawork.vercel.app');
+    res.setHeader('Access-Control-Allow-Origin', 'https://opawork.vercel.app');
 
     const { id } = req.params;  // Cambiado _id a id para mayor claridad
     const { modJob } = req.body;
@@ -1279,7 +1360,7 @@ router.post("/api/update_mod_advise_by_user/:id", cors(), async (req, res) => {
 router.delete("/api/delete_contact_user/:id", cors(), async (req, res) => {
     res.setHeader('Content-Type', 'application/json');
     res.setHeader('Cache-Control', 's-max-age=1, stale-while-revalidate');
-    res.setHeader('Access-Control-Allow-Origin',  'https://opawork.vercel.app');
+    res.setHeader('Access-Control-Allow-Origin', 'https://opawork.vercel.app');
     const { name } = req.body
     const { id } = req.params
     console.log(id, name)
@@ -1311,7 +1392,7 @@ router.delete("/api/delete_contact_user/:id", cors(), async (req, res) => {
 router.post("/api/update_benefits_user/:id", cors(), async (req, res) => {
     res.setHeader('Content-Type', 'application/json');
     res.setHeader('Cache-Control', 's-max-age=1, stale-while-revalidate');
-    res.setHeader('Access-Control-Allow-Origin',  'https://opawork.vercel.app');
+    res.setHeader('Access-Control-Allow-Origin', 'https://opawork.vercel.app');
     const { benefits_user } = req.body
     const { id } = req.params
     console.log(id, benefits_user)
@@ -1346,7 +1427,7 @@ router.post("/api/update_benefits_user/:id", cors(), async (req, res) => {
 router.delete("/api/delete_benefits_user/:id", cors(), async (req, res) => {
     res.setHeader('Content-Type', 'application/json');
     res.setHeader('Cache-Control', 's-max-age=1, stale-while-revalidate');
-    res.setHeader('Access-Control-Allow-Origin',  'https://opawork.vercel.app');
+    res.setHeader('Access-Control-Allow-Origin', 'https://opawork.vercel.app');
     const { name } = req.body
     const { id } = req.params
     console.log(id, name)
@@ -1381,7 +1462,7 @@ router.delete("/api/delete_benefits_user/:id", cors(), async (req, res) => {
 router.delete("/api/delete_knoledge_user/:id", cors(), async (req, res) => {
     res.setHeader('Content-Type', 'application/json');
     res.setHeader('Cache-Control', 's-max-age=1, stale-while-revalidate');
-    res.setHeader('Access-Control-Allow-Origin',  'https://opawork.vercel.app');
+    res.setHeader('Access-Control-Allow-Origin', 'https://opawork.vercel.app');
     const { name } = req.body
     const { id } = req.params
     console.log(id, name)
@@ -1414,7 +1495,7 @@ router.delete("/api/delete_knoledge_user/:id", cors(), async (req, res) => {
 router.get("/api/get_benefits_user/:id", cors(), async (req, res) => {
     res.setHeader('Content-Type', 'application/json');
     res.setHeader('Cache-Control', 's-max-age=1, stale-while-revalidate');
-    res.setHeader('Access-Control-Allow-Origin',  'https://opawork.vercel.app');
+    res.setHeader('Access-Control-Allow-Origin', /* 'https://opawork.vercel.app' */'http://localhost:3000');
     const { id } = req.params
     try {
         if (!id) {
@@ -1435,7 +1516,7 @@ router.get("/api/get_benefits_user/:id", cors(), async (req, res) => {
 router.get("/api/update_knoledge_user/:id", cors(), async (req, res) => {
     res.setHeader('Content-Type', 'application/json');
     res.setHeader('Cache-Control', 's-max-age=1, stale-while-revalidate');
-    res.setHeader('Access-Control-Allow-Origin',  'https://opawork.vercel.app');
+    res.setHeader('Access-Control-Allow-Origin', 'https://opawork.vercel.app');
     const { id } = req.params
     try {
         if (!id) {
@@ -1456,7 +1537,7 @@ router.get("/api/update_knoledge_user/:id", cors(), async (req, res) => {
 router.get("/api/get_knoledge_user/:id", cors(), async (req, res) => {
     res.setHeader('Content-Type', 'application/json');
     res.setHeader('Cache-Control', 's-max-age=1, stale-while-revalidate');
-    res.setHeader('Access-Control-Allow-Origin',  'https://opawork.vercel.app');
+    res.setHeader('Access-Control-Allow-Origin', /* 'https://opawork.vercel.app' */'http://localhost:3000');
     const { id } = req.params
     try {
         if (!id) {
@@ -1480,7 +1561,7 @@ router.get("/api/get_knoledge_user/:id", cors(), async (req, res) => {
 router.post("/api/update_contact_user/:id", cors(), async (req, res) => {
     /*     res.setHeader('Content-Type', 'application/json'); */
     res.setHeader('Cache-Control', 's-max-age=1, stale-while-revalidate');
-    res.setHeader('Access-Control-Allow-Origin',  'https://opawork.vercel.app');
+    res.setHeader('Access-Control-Allow-Origin', 'https://opawork.vercel.app');
     const { contact_info } = req.body
     const { id } = req.params
     console.log(contact_info)
@@ -1532,8 +1613,9 @@ router.post("/api/update_contact_user/:id", cors(), async (req, res) => {
 router.get("/api/get_contact_user/:id", cors(), async (req, res) => {
     /*     res.setHeader('Content-Type', 'application/json'); */
     res.setHeader('Cache-Control', 's-max-age=1, stale-while-revalidate');
-    res.setHeader('Access-Control-Allow-Origin',  'https://opawork.vercel.app');
+    res.setHeader('Access-Control-Allow-Origin', /* 'https://opawork.vercel.app' */'http://localhost:3000');
     const { _id } = req.params
+    console.log("iddddd" + _id)
     try {
         if (!_id) {
             return res.status(400).json({ success: 400, message: 'ID and name are required' });
@@ -1541,6 +1623,7 @@ router.get("/api/get_contact_user/:id", cors(), async (req, res) => {
         // Encuentra y actualiza el documento del usuario
         const updatedUser = await clientDB.db("opawork").collection("user").findOne({ _id: new ObjectId(_id) });
         const contact = updatedUser ? updatedUser.contact_info : [];
+        console.log(contact)
         // Verifica si se realizó una actualización
         res.status(200).json({ success: 200, contact });
     } catch (error) {
@@ -1555,7 +1638,7 @@ router.get("/api/get_contact_user/:id", cors(), async (req, res) => {
 router.post("/api/update_knoledge_user/:id", cors(), async (req, res) => {
     /*     res.setHeader('Content-Type', 'application/json'); */
     res.setHeader('Cache-Control', 's-max-age=1, stale-while-revalidate');
-    res.setHeader('Access-Control-Allow-Origin',  'https://opawork.vercel.app');
+    res.setHeader('Access-Control-Allow-Origin', 'https://opawork.vercel.app');
     const { knoledge_info } = req.body
     const { id } = req.params
     console.log(knoledge_info)
@@ -1624,7 +1707,7 @@ router.post("/api/update_knoledge_user/:id", cors(), async (req, res) => {
 router.get("/api/get_description_user/:id", cors(), async (req, res) => {
     /*     res.setHeader('Content-Type', 'application/json'); */
     res.setHeader('Cache-Control', 's-max-age=1, stale-while-revalidate');
-    res.setHeader('Access-Control-Allow-Origin',  'https://opawork.vercel.app');
+    res.setHeader('Access-Control-Allow-Origin', /* 'https://opawork.vercel.app' */'http://localhost:3000');
     const { id } = req.params
     console.log("user: " + id)
     try {
@@ -1650,7 +1733,7 @@ router.get("/api/get_description_user/:id", cors(), async (req, res) => {
 router.post("/api/update_personal_about", cors(), async (req, res) => {
     res.setHeader('Content-Type', 'application/json');
     res.setHeader('Cache-Control', 's-max-age=1, stale-while-revalidate');
-    res.setHeader('Access-Control-Allow-Origin',  'https://opawork.vercel.app');
+    res.setHeader('Access-Control-Allow-Origin', 'https://opawork.vercel.app');
     const { about } = req.body
     console.log("descripcion" + about.description, "id" + about.id)
     try {
@@ -1690,7 +1773,7 @@ router.post("/api/update_personal_about", cors(), async (req, res) => {
 router.get("/api/postulations/:id", cors(), async (req, res) => {
     /*     res.setHeader('Content-Type', 'application/json'); */
     res.setHeader('Cache-Control', 's-max-age=1, stale-while-revalidate');
-    res.setHeader('Access-Control-Allow-Origin',  'https://opawork.vercel.app');
+    res.setHeader('Access-Control-Allow-Origin', /* 'https://opawork.vercel.app' */'http://localhost:3000');
 
     try {
         const { id } = req.params;
@@ -1757,7 +1840,7 @@ router.get("/api/postulations/:id", cors(), async (req, res) => {
 router.post("/api/postulate", async (req, res) => {
     /*     res.setHeader('Content-Type', 'application/json'); */
     res.setHeader('Cache-Control', 's-max-age=1, stale-while-revalidate');
-    res.setHeader('Access-Control-Allow-Origin',  'https://opawork.vercel.app');
+    res.setHeader('Access-Control-Allow-Origin', /* 'https://opawork.vercel.app' */'http://localhost:3000');
     try {
         const { jobId, userId, bussinesId } = req.body;
         console.log(jobId, userId, bussinesId);
@@ -1794,7 +1877,7 @@ router.post("/api/postulate", async (req, res) => {
 router.post("/api/mark_user-view", async (req, res) => {
     /*     res.setHeader('Content-Type', 'application/json'); */
     res.setHeader('Cache-Control', 's-max-age=1, stale-while-revalidate');
-    res.setHeader('Access-Control-Allow-Origin',  'https://opawork.vercel.app');
+    res.setHeader('Access-Control-Allow-Origin', /* 'https://opawork.vercel.app' */'http://localhost:3000');
     try {
         const { _id } = req.body;
 
@@ -1830,11 +1913,11 @@ router.post("/api/mark_user-view", async (req, res) => {
 router.post("/api/create_advise/:id", async (req, res) => {
     /*     res.setHeader('Content-Type', 'application/json'); */
     res.setHeader('Cache-Control', 's-max-age=1, stale-while-revalidate');
-    res.setHeader('Access-Control-Allow-Origin',  'https://opawork.vercel.app');
+    res.setHeader('Access-Control-Allow-Origin', /* 'https://opawork.vercel.app' */'https://localhost:3000');
     try {
         const { id } = req.params; // Corregir la desestructuración de params
         const { title, description, street, type, salary, experience, requirements, benefits, typeTime, company, sector,
-            email, contactLinkedIn, contactPhone, department, country } = req.body;
+            email, contactLinkedIn, contactPhone, department, country, location } = req.body;
 
         // Verificar que todos los campos obligatorios están presentes
         /*    if (!title || !description || !location || !type || !salary || !experience || !requirements || !user_id) {
@@ -1851,12 +1934,12 @@ router.post("/api/create_advise/:id", async (req, res) => {
 
 
         const newAdvise = {
-            title,
-            description,
-            street,
-            department,
-            country,
-            company,
+            title: title,
+            description: description,
+            street: street,
+            department: department,
+            country: country,
+            company: bussinesUser.contact_info.Email,
             user_id: new ObjectId(id),
             requirements: requirements,
             benefits: benefits,
@@ -1864,11 +1947,11 @@ router.post("/api/create_advise/:id", async (req, res) => {
             modJob: [
                 {
                     "nombre": "Salario",
-                    "data": salary
+                    "data": `${salary}`
                 },
                 {
                     "nombre": "Experiencia",
-                    "data": experience //seniority
+                    "data": `${experience} años`
                 },
                 {
                     "nombre": "Ubicación",
@@ -1930,7 +2013,7 @@ router.post("/api/create_advise/:id", async (req, res) => {
 router.post('/api/login_account', async (req, res) => {
     res.setHeader('Content-Type', 'application/json');
     res.setHeader('Cache-Control', 's-max-age=1, stale-while-revalidate');
-    res.setHeader('Access-Control-Allow-Origin',  'https://opawork.vercel.app');
+    res.setHeader('Access-Control-Allow-Origin', /* 'https://opawork.vercel.app' */'http://localhost:3000');
     res.setHeader('Access-Control-Allow-Credentials', "true");
     const { uLogin } = req.body;
     console.log(uLogin)
@@ -1955,7 +2038,7 @@ router.post('/api/login_account', async (req, res) => {
             success: 200,
             user: {
                 id: user._id,
-                name: user.nombre,
+                nombre: user.nombre,
                 email: user.email,
                 photo: user.photo,
                 phone: user.phone,
@@ -1971,6 +2054,7 @@ router.post('/api/login_account', async (req, res) => {
                 works_information: user.works_information,
                 education_information: user.education_information,
                 lenguages: user.lenguages,
+                sector: user.sector,
                 // Añade otros campos que quieras devolver
             }
         });
@@ -1984,10 +2068,10 @@ router.post('/api/login_account', async (req, res) => {
 
 
 
-router.post('/api/register_account', async (req, res) => {
+router.post('/api/register_account', cors(), async (req, res) => {
     res.setHeader('Content-Type', 'application/json');
     res.setHeader('Cache-Control', 's-max-age=1, stale-while-revalidate');
-    res.setHeader('Access-Control-Allow-Origin',  'https://opawork.vercel.app');
+    res.setHeader('Access-Control-Allow-Origin', /* 'https://opawork.vercel.app' */'http://localhost:3030');
     res.setHeader('Access-Control-Allow-Credentials', "true");
 
     const { uRegister } = req.body;
@@ -1997,36 +2081,65 @@ router.post('/api/register_account', async (req, res) => {
         if (!uRegister) {
             return res.status(400).json({ msg: 'Todos los campos son obligatorios' });
         }
-
+        await clientDB.connect()
         // Verificar si el usuario ya existe
-        const user = await clientDB.db("opawork").collection("user").findOne({ email: uRegister.email });
+        const user = await clientDB.db("mercado").collection("user").findOne({ email: uRegister.email });
+        console.log(user)
         if (user) {
             return res.status(400).json({ msg: 'El usuario ya existe' });
         }
 
         // Hashear la contraseña antes de guardarla
-        const salt = await bcrypt.genSalt(10);
-        const hashedPass = await bcrypt.hash(uRegister.password, salt);
+        /*  const salt = await bcrypt.genSalt(10);
+         const hashedPass = await bcrypt.hash(uRegister.password, salt); */
 
         // Crear un nuevo usuario basado en el modelo proporcionado
+        /*         if (uRegister.is_bussines === false) {
+         */
         const newUser = {
-            nombre: uRegister.nombre,
+
             email: uRegister.email,
-            password: hashedPass,
-            type: 'person',
-            aplicaciones: [], // Esto puede ser llenado luego o según el uRegister si se proporciona
-            photo: uRegister.photo,
-            sector: uRegister.sector,
-            contact_info: uRegister.contact_info || [],
-            benefits: uRegister.benefits || [],
-            knoledge: uRegister.knoledge || [],
-            description: uRegister.description,
-            works_information: uRegister.works_information || [],
-            education_information: uRegister.education_information || [],
-            lenguages: uRegister.lenguages || []
+            /*   password: hashedPass,
+              type: 'person',
+              aplicaciones: [], // Esto puede ser llenado luego o según el uRegister si se proporciona
+              photo: "",
+              sector: uRegister.sector || "",
+              contact_info: [
+                  {
+                      name: "WhatsApp",
+                      value: uRegister.phone
+                  },
+                  {
+                      name: "Facebook",
+                      value: ""
+                  },
+                  {
+                      name: "Twitter",
+                      value: ""
+                  },
+                  {
+                      name: "LinkedIn",
+                      value: ""
+                  },
+                  {
+                      name: "Github",
+                      value: ""
+                  },
+                  {
+                      name: "Github",
+                      value: ""
+                  }
+
+              ],
+              benefits: uRegister.benefits || [],
+              knoledge: uRegister.knoledge || [],
+              description: uRegister.description || [],
+              works_information: uRegister.works_information || [],
+              education_information: uRegister.education_information || [],
+              lenguages: uRegister.lenguages || [] */
         };
 
-        const savedUser = await clientDB.db("opawork").collection("user").insertOne(newUser);
+        const savedUser = await clientDB.db("mercado").collection("user").insertOne(newUser);
 
         if (savedUser.acknowledged === true) {
             res.json({
@@ -2035,19 +2148,91 @@ router.post('/api/register_account', async (req, res) => {
                     id: savedUser.insertedId, // MongoDB devuelve el ID en este campo
                     nombre: newUser.nombre,
                     email: newUser.email,
-                    type: newUser.type,
-                    aplicaciones: newUser.aplicaciones,
-                    photo: newUser.photo,
-                    sector: newUser.sector,
-                    contact_info: newUser.contact_info,
-                    benefits: newUser.benefits,
-                    knoledge: newUser.knoledge,
-                    description: newUser.description,
-                    works_information: newUser.works_information,
-                    education_information: newUser.education_information,
-                    lenguages: newUser.lenguages,
+                    /*    type: newUser.type,
+                       aplicaciones: newUser.aplicaciones,
+                       photo: newUser.photo,
+                       sector: newUser.sector,
+                       contact_info: newUser.contact_info,
+                       benefits: newUser.benefits,
+                       knoledge: newUser.knoledge,
+                       description: newUser.description,
+                       works_information: newUser.works_information,
+                       education_information: newUser.education_information,
+                       lenguages: newUser.lenguages,
+                       sector: user.sector, */
                 }
             });
+        }
+
+        if (uRegister.is_bussines === true) {
+
+            const newUser = {
+                nombre: uRegister.name,
+                email: uRegister.email,
+                password: hashedPass,
+                type: 'person',
+                aplicaciones: [], // Esto puede ser llenado luego o según el uRegister si se proporciona
+                photo: "",
+                sector: uRegister.sector || "",
+                contact_info: [
+                    {
+                        name: "WhatsApp",
+                        value: uRegister.phone
+                    },
+                    {
+                        name: "Facebook",
+                        value: ""
+                    },
+                    {
+                        name: "Twitter",
+                        value: ""
+                    },
+                    {
+                        name: "LinkedIn",
+                        value: ""
+                    },
+                    {
+                        name: "Github",
+                        value: ""
+                    },
+                    {
+                        name: "Github",
+                        value: ""
+                    }
+
+                ],
+                benefits: uRegister.benefits || [],
+                knoledge: uRegister.knoledge || [],
+                description: uRegister.description || [],
+                works_information: uRegister.works_information || [],
+                education_information: uRegister.education_information || [],
+                lenguages: uRegister.lenguages || [],
+                sector: user.sector,
+            };
+
+            const savedUser = await clientDB.db("mercado").collection("user").insertOne(newUser);
+
+            if (savedUser.acknowledged === true) {
+                res.json({
+                    success: 200,
+                    user: {
+                        id: savedUser.insertedId, // MongoDB devuelve el ID en este campo
+                        nombre: newUser.nombre,
+                        email: newUser.email,
+                        type: newUser.type,
+                        aplicaciones: newUser.aplicaciones,
+                        photo: newUser.photo,
+                        sector: newUser.sector,
+                        contact_info: newUser.contact_info,
+                        benefits: newUser.benefits,
+                        knoledge: newUser.knoledge,
+                        description: newUser.description,
+                        works_information: newUser.works_information,
+                        education_information: newUser.education_information,
+                        lenguages: newUser.lenguages,
+                    }
+                });
+            }
         }
 
     } catch (err) {
@@ -2060,7 +2245,7 @@ router.post('/api/register_account', async (req, res) => {
 router.post("/api/all_advises_bussines/:id", async (req, res) => {
     res.setHeader('Content-Type', 'application/json');
     res.setHeader('Cache-Control', 's-max-age=1, stale-while-revalidate');
-    res.setHeader('Access-Control-Allow-Origin',  'https://opawork.vercel.app');
+    res.setHeader('Access-Control-Allow-Origin', /* 'https://opawork.vercel.app' */'http://localhost:3000');
     try {
         const { id } = req.params;
         if (!id) {
