@@ -173,7 +173,7 @@ router.get("/api/all_advises/:id", async (req, res) => {
 
 
 
- router.get('/api/check-auth', (req, res) => {
+ router.get('/api/check-auth',cors(), (req, res) => {
     const token = req.cookies;
     console.log(token);
 
