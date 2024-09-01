@@ -23,7 +23,7 @@
                 "OPTIONS"
             ],
             "headers": {
-                "Access-Control-Allow-Origin": "https://unabuena.com",
+                "Access-Control-Allow-Origin": "https://unabuenauy.com",
                 "Access-Control-Allow-Credentials": "true"
             }
         }
