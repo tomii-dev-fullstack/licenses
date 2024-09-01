@@ -201,7 +201,7 @@ router.post('/api/logout', (req, res) => {
     res.clearCookie('sessionToken', {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
-        sameSite: 'Strict'
+        sameSite: 'None'
     });
 
     // Responde con un mensaje de éxito
