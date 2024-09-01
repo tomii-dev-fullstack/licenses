@@ -23,7 +23,7 @@
                 "OPTIONS"
             ],
             "headers": {
-                "Access-Control-Allow-Origin": "https://olamercado.vercel.app",
+                "Access-Control-Allow-Origin": "https://unabuena.com",
                 "Access-Control-Allow-Credentials": "true"
             }
         }
