@@ -272,7 +272,7 @@ router.post("/api/login", cors(), async (req, res) => {
         res.cookie('sessionToken', sessionToken, {
             httpOnly: true,
             secure: process.env.NODE_ENV === 'production', // Solo en HTTPS en producción
-            sameSite: 'Strict',
+            sameSite: 'None',
             maxAge: 24 * 60 * 60 * 1000 // 1 día de vida útil
         });
 
