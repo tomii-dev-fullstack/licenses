@@ -272,9 +272,10 @@ router.post("/api/login", cors(), async (req, res) => {
         // Configurar la cookie con el token de sesión
         res.cookie('sessionToken', sessionToken, {
             httpOnly: true,
+            
        /*      domain:"https://olamercado.vercel.app", */
             secure: process.env.NODE_ENV === 'production', // Solo en HTTPS en producción
-            sameSite: 'None',
+            sameSite: 'Lax',
             maxAge: 24 * 60 * 60 * 1000 // 1 día de vida útil
         });
 
