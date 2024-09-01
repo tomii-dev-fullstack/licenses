@@ -175,6 +175,7 @@ router.get("/api/all_advises/:id", async (req, res) => {
 
  router.get('/api/check-auth',cors(), (req, res) => {
     res.setHeader('Access-Control-Allow-Origin', 'http://localhost:3030')
+    res.setHeader('Access-Control-Allow-Credentials', "true");
     const token = req.cookies;
     console.log(token);
 
