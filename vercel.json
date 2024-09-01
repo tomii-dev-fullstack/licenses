@@ -23,7 +23,7 @@
                 "OPTIONS"
             ],
             "headers": {
-                "Access-Control-Allow-Origin": "https://olamercado.vercel.app",
+                "Access-Control-Allow-Origin": "http://localhost:3030",
                 "Access-Control-Allow-Credentials": "true"
             }
         }
