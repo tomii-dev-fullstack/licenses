@@ -275,7 +275,7 @@ router.post("/api/login", cors(), async (req, res) => {
             
        /*      domain:"https://olamercado.vercel.app", */
             secure: process.env.NODE_ENV === 'production', // Solo en HTTPS en producción
-            sameSite: 'Lax',
+            sameSite: 'None',
             maxAge: 24 * 60 * 60 * 1000 // 1 día de vida útil
         });
 
