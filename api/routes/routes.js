@@ -174,7 +174,7 @@ router.get("/api/all_advises/:id", async (req, res) => {
 
 
  router.get('/api/check-auth',cors(), (req, res) => {
-    res.setHeader('Access-Control-Allow-Origin', 'http://localhost:3030')
+    res.setHeader('Access-Control-Allow-Origin', 'https://olamercado.vercel.app')
     res.setHeader('Access-Control-Allow-Credentials', "true");
     const token = req.cookies;
     console.log(token);
@@ -232,7 +232,7 @@ router.post('/api/logout', (req, res) => {
 router.post("/api/login", cors(), async (req, res) => {
     res.setHeader('Content-Type', 'application/json');
     res.setHeader('Cache-Control', 's-max-age=1, stale-while-revalidate');
-    res.setHeader('Access-Control-Allow-Origin', 'http://localhost:3030')
+    res.setHeader('Access-Control-Allow-Origin', 'https://olamercado.vercel.app')
    /*  res.setHeader('Access-Control-Allow-Origin', 'http://localhost:3030'); */
     res.setHeader('Access-Control-Allow-Credentials', "true");
 
