@@ -232,6 +232,7 @@ router.post('/api/logout', (req, res) => {
 router.post("/api/login", cors(), async (req, res) => {
     res.setHeader('Content-Type', 'application/json');
     res.setHeader('Cache-Control', 's-max-age=1, stale-while-revalidate');
+    res.setHeader('Access-Control-Allow-Origin', 'http://localhost:3030')
    /*  res.setHeader('Access-Control-Allow-Origin', 'http://localhost:3030'); */
     res.setHeader('Access-Control-Allow-Credentials', "true");
 
@@ -290,7 +291,7 @@ router.post("/api/login", cors(), async (req, res) => {
 router.get("/api/match/:id", /* cors(), */ async (req, res) => {
     res.setHeader('Content-Type', 'application/json');
     res.setHeader('Cache-Control', 's-max-age=1, stale-while-revalidate');
-    res.setHeader('Access-Control-Allow-Origin', /* 'https://opawork.vercel.app' */'http://localhost:3000');
+    res.setHeader('Access-Control-Allow-Origin', /* 'https://opawork.vercel.app' */'http://localhost:3030');
 
     const { id } = req.params;
 
