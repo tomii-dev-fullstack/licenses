@@ -8,6 +8,7 @@ import { send } from "../nodemailer/config.js"
 import jwt from "jsonwebtoken"
 import bcrypt from "bcrypt"
 import { Payment, MercadoPagoConfig, Preference } from "mercadopago"
+import {ALLOWED_ORIGIN} from "./lib/apis.js"
 /* import { calculateMatch } from "../match.js"
 import { calculateMatchByUserByJob } from "../objet-match.js"; */
 const router = Router()
@@ -15,6 +16,7 @@ const client = new MercadoPagoConfig({
     accessToken: "TEST-5387852327876700-073110-755bd3bd40e2672d39bea5dad3cfbbec-360175350",
 
 })
+
 router.post("/api/purchase", (req, res) => {
     try {
         const preference = new Preference(client);
@@ -174,7 +176,7 @@ router.get("/api/all_advises/:id", async (req, res) => {
 
 
  router.get('/api/check-auth',cors(), (req, res) => {
-    res.setHeader('Access-Control-Allow-Origin', 'https://unabuenauy.com')
+    res.setHeader('Access-Control-Allow-Origin', ALLOWED_ORIGIN)
     res.setHeader('Access-Control-Allow-Credentials', "true");
     const token = req.cookies;
     console.log(token);
@@ -201,7 +203,7 @@ router.post('/api/logout', (req, res) => {
     res.clearCookie('sessionToken', {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
-        sameSite: 'None'
+        sameSite: 'strict'// pasar a otro val en prod
     });
 
     // Responde con un mensaje de éxito
@@ -232,7 +234,7 @@ router.post('/api/logout', (req, res) => {
 router.post("/api/login", cors(), async (req, res) => {
     res.setHeader('Content-Type', 'application/json');
     res.setHeader('Cache-Control', 's-max-age=1, stale-while-revalidate');
-    res.setHeader('Access-Control-Allow-Origin', 'https://unabuenauy.com')
+    res.setHeader('Access-Control-Allow-Origin', ALLOWED_ORIGIN)
    /*  res.setHeader('Access-Control-Allow-Origin', 'http://localhost:3030'); */
     res.setHeader('Access-Control-Allow-Credentials', "true");
 
@@ -275,7 +277,7 @@ router.post("/api/login", cors(), async (req, res) => {
             
        /*      domain:"https://olamercado.vercel.app", */
             secure: process.env.NODE_ENV === 'production', // Solo en HTTPS en producción
-            sameSite: 'None',
+            sameSite: 'strict', // cambiar a None en produccion
             maxAge: 24 * 60 * 60 * 1000 // 1 día de vida útil
         });
 
