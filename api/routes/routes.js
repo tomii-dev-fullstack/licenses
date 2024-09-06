@@ -8,7 +8,9 @@ import { send } from "../nodemailer/config.js"
 import jwt from "jsonwebtoken"
 import bcrypt from "bcrypt"
 import { Payment, MercadoPagoConfig, Preference } from "mercadopago"
-import {ALLOWED_ORIGIN} from "./lib/apis.js"
+import multer from "multer";
+import path from "path";
+import { ALLOWED_ORIGIN } from "./lib/apis.js"
 /* import { calculateMatch } from "../match.js"
 import { calculateMatchByUserByJob } from "../objet-match.js"; */
 const router = Router()
@@ -16,6 +18,20 @@ const client = new MercadoPagoConfig({
     accessToken: "TEST-5387852327876700-073110-755bd3bd40e2672d39bea5dad3cfbbec-360175350",
 
 })
+
+
+
+const storage = multer.diskStorage({
+    destination: (req, file, cb) => {
+        cb(null, 'api/uploads/');  // Carpeta donde se guardarán los archivos
+    },
+    filename: (req, file, cb) => {
+        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+        cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));  // Nombre único para evitar colisiones
+    }
+});
+const upload = multer({ storage });
+
 
 router.post("/api/purchase", (req, res) => {
     try {
@@ -41,84 +57,117 @@ router.post("/api/purchase", (req, res) => {
 
 })
 
-router.get("/", (req, res) => {
+router.get("/", async (req, res) => {
     res.setHeader('Content-Type', 'application/json');
     res.setHeader('Cache-Control', 's-max-age=1, stale-while-revalidate');
-    res.send("Hello World!");
-})
-router.get("/api/advise/:id", async (req, res) => {
-    res.setHeader('Content-Type', 'application/json');
-    res.setHeader('Cache-Control', 's-max-age=1, stale-while-revalidate');
-    res.setHeader('Access-Control-Allow-Origin', /* 'https://opawork.vercel.app' */'http://localhost:3000');
+    res.setHeader('Access-Control-Allow-Origin', /* 'https://opawork.vercel.app' */ ALLOWED_ORIGIN);
     res.setHeader('Access-Control-Allow-Credentials', "true");
+
     try {
-        const { id } = req.params;
-        console.log(id);
-        if (!id) {
-            return res.status(400).json({ message: 'user_id is required' });
-        }
+        // Conectamos a la base de datos
         await clientDB.connect();
 
-        const applications = await clientDB.db("opawork").collection("application").aggregate([
+        // Ejecutamos la consulta con agregaciones
+        const data = await clientDB.db("mercado").collection("product").aggregate([
+            {
+                $lookup: {
+                    from: "user",
+                    localField: "user_id",
+                    foreignField: "_id",
+                    as: "user_details"
+                }
+            },
+            {
+                $unwind: "$user_details"
+            }
+        ]).toArray();
+
+        // Comprobamos si hay datos
+        if (data.length > 0) {
+            console.log(data)
+            return res.status(200).json({ data: data });
+        } else {
+            // Enviar respuesta con un estado 204 si no se encontraron productos
+            return res.status(204).json({ message: "No se encontraron productos." });
+        }
+
+    } catch (error) {
+        // Manejamos el error y lo registramos
+        console.error('Error:', error);
+        res.status(500).json({
+            message: 'Ocurrió un error procesando tu solicitud',
+            error: error.message
+        });
+    } finally {
+        // Cerramos la conexión de manera segura
+        if (clientDB) {
+            clientDB.close();
+        }
+    }
+});
+
+router.get("/api/:id/:idProduct", cors(), async (req, res) => {
+    res.setHeader('Content-Type', 'application/json');
+    res.setHeader('Cache-Control', 's-max-age=1, stale-while-revalidate');
+    res.setHeader('Access-Control-Allow-Origin', ALLOWED_ORIGIN);
+    res.setHeader('Access-Control-Allow-Credentials', "true");
+
+    try {
+        const { id, idProduct } = req.params;
+        console.log(id, idProduct);
+
+        // Validación mejorada de los parámetros
+        if (!id || !idProduct) {
+            return res.status(400).json({ message: 'Both id and idProduct are required' });
+        }
+
+        await clientDB.connect();
+
+        // Convertir idProduct a ObjectId para la consulta
+        const product = await clientDB.db("mercado").collection("product").aggregate([
             {
                 $match: {
-                    job_id: new ObjectId(id) // Filtramos por el trabajo ID
+                    _id: new ObjectId(idProduct) // Filtramos por el product ID
                 }
             },
             {
                 $lookup: {
                     from: "user", // Nombre de la colección de aplicaciones
-                    localField: "user_id", // Campo en la colección de trabajos que contiene el ID del trabajo
-                    foreignField: "_id", // Campo en la colección de aplicaciones que referencia el ID del trabajo
-                    as: "userDetails" // Nombre del array resultante
+                    localField: "user_id", // Campo en la colección de trabajos que coincide con el ObjectId
+                    foreignField: "_id", // Campo en la colección de aplicaciones que coincide con el ObjectId del trabajo
+                    as: "user_details" // Nombre del array resultante
                 }
             },
             {
-                $unwind: "$userDetails" // Desenrollamos el array resultante para acceder a los detalles de la aplicación
+                $unwind: "$user_details" // Desplazamos los datos del array de aplicaciones
             },
             {
                 $lookup: {
-                    from: "job", // Nombre de la colección de aplicaciones
-                    localField: "job_id", // Campo en la colección de trabajos que contiene el ID del trabajo
-                    foreignField: "_id", // Campo en la colección de aplicaciones que referencia el ID del trabajo
-                    as: "jobDetails" // Nombre del array resultante
+                    from: "review", // Nombre de la colección de aplicaciones
+                    localField: "_id", // Campo en la colección de trabajos que coincide con el ObjectId
+                    foreignField: "product_id", // Campo en la colección de aplicaciones que coincide con el ObjectId del trabajo
+                    as: "product_details" // Nombre del array resultante
                 }
-            },
-            {
-                $unwind: "$jobDetails" // Desenrollamos el array resultante para acceder a los detalles de la aplicación
             }
         ]).toArray();
-        /*   const user = await clientDB.db("opawork").collection("user").findOne({ _id: new ObjectId(user_id) }) */
-        console.log(applications);
-        /*   const ap = applications.map(app => ({
-             matchp: calculateMatchByUserByJob(app.userDetails, app.jobDetails),
-             u: app
-         })); */
-        console.log(ap)
-        if (ap.length > 0) {
-            res.status(200).json(ap);
 
+        console.log(product);
+
+        if (product.length > 0) {
+            return res.status(200).json({ data: product });
         } else {
-            res.status(404).json({ message: 'No se encontraron postulaciones para el usuario dado' });
-
+            return res.status(404).json({ message: 'No products found for the given ID' });
         }
-        /*   if (applications.length > 0) {
-              res.status(200).json(applications);
-           
-          } else {
-              res.status(404).json({ message: 'No se encontraron postulaciones para el usuario dado' });
-              
-          }
-   */
+
     } catch (error) {
         console.error(error);
-        res.status(500).json({ message: 'An error occurred while processing your request', error: error.message });
+        return res.status(500).json({ message: 'An error occurred while processing your request', error: error.message });
+    } finally {
+        // Cerramos la conexión a la base de datos en el bloque `finally`
         clientDB.close();
     }
-    finally {
-        clientDB.close();
-    }
-})
+});
+
 router.get("/api/all_advises/:id", async (req, res) => {
     res.setHeader('Content-Type', 'application/json');
     res.setHeader('Cache-Control', 's-max-age=1, stale-while-revalidate');
@@ -175,7 +224,7 @@ router.get("/api/all_advises/:id", async (req, res) => {
 
 
 
- router.get('/api/check-auth',cors(), (req, res) => {
+router.get('/api/check-auth', cors(), (req, res) => {
     res.setHeader('Access-Control-Allow-Origin', ALLOWED_ORIGIN)
     res.setHeader('Access-Control-Allow-Credentials', "true");
     const token = req.cookies;
@@ -198,6 +247,8 @@ router.get("/api/all_advises/:id", async (req, res) => {
         res.status(401).json({ error: 'No autorizado' });
     }
 });
+
+
 router.post('/api/logout', (req, res) => {
     // Elimina la cookie de sesión
     res.clearCookie('sessionToken', {
@@ -209,7 +260,6 @@ router.post('/api/logout', (req, res) => {
     // Responde con un mensaje de éxito
     res.status(200).json({ message: 'Logout exitoso' });
 });
- 
 
 
 
@@ -223,19 +273,11 @@ router.post('/api/logout', (req, res) => {
 
 
 
-
-
-
-
-
-
-
-
-router.post("/api/login", cors(), async (req, res) => {
+router.post("/api/login_with_google", cors(), async (req, res) => {
     res.setHeader('Content-Type', 'application/json');
     res.setHeader('Cache-Control', 's-max-age=1, stale-while-revalidate');
     res.setHeader('Access-Control-Allow-Origin', ALLOWED_ORIGIN)
-   /*  res.setHeader('Access-Control-Allow-Origin', 'http://localhost:3030'); */
+    /*  res.setHeader('Access-Control-Allow-Origin', 'http://localhost:3030'); */
     res.setHeader('Access-Control-Allow-Credentials', "true");
 
     const { token } = req.body;
@@ -274,8 +316,8 @@ router.post("/api/login", cors(), async (req, res) => {
         // Configurar la cookie con el token de sesión
         res.cookie('sessionToken', sessionToken, {
             httpOnly: true,
-            
-       /*      domain:"https://olamercado.vercel.app", */
+
+            /*      domain:"https://olamercado.vercel.app", */
             secure: process.env.NODE_ENV === 'production', // Solo en HTTPS en producción
             sameSite: 'strict', // cambiar a None en produccion
             maxAge: 24 * 60 * 60 * 1000 // 1 día de vida útil
@@ -292,107 +334,68 @@ router.post("/api/login", cors(), async (req, res) => {
     }
 });
 
-router.get("/api/match/:id", /* cors(), */ async (req, res) => {
+router.post("/api/upload_product", cors(), upload.array("images", 5), async (req, res) => {
     res.setHeader('Content-Type', 'application/json');
     res.setHeader('Cache-Control', 's-max-age=1, stale-while-revalidate');
-    res.setHeader('Access-Control-Allow-Origin', /* 'https://opawork.vercel.app' */'http://localhost:3030');
-
-    const { id } = req.params;
-
-    if (!id || id.trim() === '' || id === null || id === undefined) {
-        console.log(id)
-        return res.status(400).json({
-            message: 'ID de usuario no válido',
-            error: 'No se ha proporcionado un ID de usuario válido.',
-            status: 404
-        });
-    }
+    res.setHeader('Access-Control-Allow-Origin', ALLOWED_ORIGIN);
 
     try {
-        console.log(`ID recibido: ${id}`);
+        await clientDB.connect();  // Conectar a la base de datos
 
-        await clientDB.connect();
-        const userId = new ObjectId(id); // El id del usuario
-
-        const jobsBD = await clientDB.db("opawork").collection("job").aggregate([
-            {
-                $lookup: {
-                    from: "application",
-                    localField: "_id",
-                    foreignField: "job_id",
-                    as: "applications"
-                }
+        // Insertar producto en la base de datos
+        const added = await clientDB.db("mercado").collection("product").insertOne({
+            title: req.body.title,
+            description: req.body.description,
+            stock: Number(req.body.stock),
+            calification: 0,
+            reviews: [],
+            discount: Number(req.body.discount) || 0,
+            /* tags: req.body.tags.split(",") || [], */
+            price: req.body.price,
+            category: req.body.category,
+            sold_count: 0,
+            created_at: new Date(),
+            updated_at: new Date(),
+            status: req.body.status || "active",
+            shipping_details: {
+                shipping_cost: req.body.shipping_cost
             },
-            {
-                $match: {
-                    "applications.user_id": { $ne: userId }
-                }
-            },
-            {
-                $lookup: {
-                    from: "user", // Suponiendo que la colección "user" contiene la información de la empresa o empleador
-                    localField: "user_id", // Relacionamos el campo user_id del trabajo con el _id del usuario/empresa
-                    foreignField: "_id",
-                    as: "userInfo"
-                }
-            },
-            {
-                $unwind: "$userInfo"
-            },
-            {
-                $project: {
-                    "applications": 0
-                }
-            }
-        ]).toArray();
+            delivery: req.body.delivery,
+            condition: req.body.condition,
+            warranty: req.body.warranty || "No tiene garantía",
+            colors: req.body.colors,
+            images: req.files.map(file => file.originalname),  // Guardar la ruta de las imágenes
+            user_id: new ObjectId(req.body.user)
+        });
 
-        const user = await clientDB.db("opawork").collection("user").findOne({ _id: new ObjectId(id) })
-        console.log(user);
+        // Subir archivos a S3 de manera asíncrona
+        if (added.acknowledged) {
 
-        /*       const jobs = await clientDB.db("opawork").collection("job").aggregate([
-                     {
-                         $lookup: {
-                             from: "application",
-                             localField: "_id",
-                             foreignField: "job_id",
-                             as: "applications"
-                         }
-                     },
-                     {
-                         $match: {
-                             "applications.user_id": { $ne: userId } 
-                         }
-                     },
-                     {
-                         $project: {
-                             applications: 0
-                         }
-                     }
-                 ]).toArray(); 
-     */
-
-
-
-        if (!jobsBD.length) {
-            return res.status(404).json({ error: 'No hay trabajos disponibles' });
+            const uploadPromises = req.files.map(file => uploadFileToS3(file, req.body.user, added.insertedId))
+            await Promise.all(uploadPromises);  // Esperar a que todos los archivos se suban
         }
 
-        /*  const jobs = jobsBD.map(job => ({
-             matchp: calculateMatch(user, job),
-             job: job
-         })); */
-        console.log(jobs)
-        return res.status(200).json({
-            message: 'Búsqueda exitosa',
-            jobs: jobs
+        // Responder con éxito
+        res.status(200).json({
+            message: 'Producto cargado exitosamente',
+            status: 200,
+            product_id: added.insertedId
         });
     } catch (error) {
-        console.error('Error al buscar trabajos:', error);
-        return res.status(500).json({ error: 'Error interno del servidor' });
+        console.error('Error al cargar el producto:', error);
+
+        // Responder con error
+        res.status(500).json({
+            message: 'Error al cargar el producto',
+            error: error.message,
+            status: 500
+        });
     } finally {
-        await clientDB.close(); // Cierra la conexión a la base de datos en todos los casos
+        // Asegurar que la conexión a la base de datos se cierra
+        await clientDB.close();
     }
 });
+
 
 
 
@@ -505,158 +508,6 @@ router.get("/api/match/explorer/:id", cors(), async (req, res) => {
 
 
 
-
-
-
-
-
-
-
-
-
-
-router.post("/api/matcsssssh/:searchTerm", cors(), async (req, res) => {
-    res.setHeader('Content-Type', 'application/json');
-    res.setHeader('Cache-Control', 's-max-age=1, stale-while-revalidate');
-    res.setHeader('Access-Control-Allow-Origin', 'https://opawork.vercel.app');
-    try {
-        const { searchTerm } = req.params;
-        await clientDB.connect();
-        console.log(searchTerm);
-
-        const jobsBD = await clientDB.db("opawork").collection("job").aggregate([
-            {
-                $lookup: {
-                    from: "application",
-                    localField: "_id",
-                    foreignField: "job_id",
-                    as: "applications"
-                }
-            },
-            {
-                $match: {
-                    "title": { $regex: searchTerm, $options: 'i' } // 'i' para búsqueda insensible a mayúsculas/minúsculas
-                }
-            },
-            {
-                $lookup: {
-                    from: "user", // Suponiendo que la colección "user" contiene la información de la empresa o empleador
-                    localField: "user_id", // Relacionamos el campo user_id del trabajo con el _id del usuario/empresa
-                    foreignField: "_id",
-                    as: "userInfo"
-                }
-            },
-            {
-                $unwind: "$userInfo"
-            },
-            /*      {
-                     $project: {
-                         "applications": 0
-                     }
-                 } */
-        ]).toArray();
-
-        /*     const user = await clientDB.db("opawork").collection("user").findOne({ _id: new ObjectId(id) }) */
-        /*   console.log(user); */
-
-        /*       const jobs = await clientDB.db("opawork").collection("job").aggregate([
-                     {
-                         $lookup: {
-                             from: "application",
-                             localField: "_id",
-                             foreignField: "job_id",
-                             as: "applications"
-                         }
-                     },
-                     {
-                         $match: {
-                             "applications.user_id": { $ne: userId } 
-                         }
-                     },
-                     {
-                         $project: {
-                             applications: 0
-                         }
-                     }
-                 ]).toArray(); 
-     */
-
-
-
-        if (!jobsBD.length) {
-            return res.status(404).json({ error: 'No hay trabajos disponibles' });
-        }
-
-        /*   const jobs = jobsBD.map(job => ({
-              matchp: calculateMatch(user, job),
-              job: job
-          })); */
-        console.log(jobsBD)
-        return res.status(200).json({
-            message: 'Búsqueda exitosa',
-            jobs: jobsBD
-        });
-    } catch (error) {
-        console.error('Error al buscar trabajos:', error);
-        return res.status(500).json({ error: 'Error interno del servidor' });
-    } finally {
-        await clientDB.close(); // Cierra la conexión a la base de datos en todos los casos
-    }
-});
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 router.post("/api/upload_profile_image", cors(), async (req, res) => {
     /*     res.setHeader('Content-Type', 'application/json'); */
     res.setHeader('Cache-Control', 's-max-age=1, stale-while-revalidate');
@@ -750,153 +601,13 @@ router.post("/api/update_personal_information", cors(), async (req, res) => {
 
 
 
-router.post("/api/add_user_lenguage/:id", cors(), async (req, res) => {
-    /*     res.setHeader('Content-Type', 'application/json'); */
-    res.setHeader('Cache-Control', 's-max-age=1, stale-while-revalidate');
-    res.setHeader('Access-Control-Allow-Origin', 'https://opawork.vercel.app');
-    const { lenguages } = req.body
-    const { id } = req.params
-    console.log("id: " + id)
-    console.log("works: " + lenguages)
-    try {
-        if (!lenguages) {
-            return res.status(400).json('No hay datos.');
-        }
-        await clientDB.connect();
-        const user = await clientDB.db("opawork").collection("user").updateOne(
-            { _id: new ObjectId(id) },
-            {
-                $push: {
-                    lenguages: {
-                        $each: lenguages // Agrega cada elemento del array al array existente en la base de datos
-                    }
-                }
-            }
-        );
-
-
-        /*    await uploadFileToS3(req.file) */
-        if (user) {
-
-            res.json({
-                success: 200,
-                message: "experiencia subida exitosamente!",
-
-            });
-        }
-    } catch (error) {
-        res.status(500).send(error.message);
-    }
-});
 
 
 
 
 
-router.post("/api/add_work_experience/:id", cors(), async (req, res) => {
-    /*     res.setHeader('Content-Type', 'application/json'); */
-    res.setHeader('Cache-Control', 's-max-age=1, stale-while-revalidate');
-    res.setHeader('Access-Control-Allow-Origin', 'https://opawork.vercel.app');
-    const { work_experience } = req.body
-    const { id } = req.params
-    console.log("id: " + id)
-    console.log("works: " + work_experience)
-    try {
-        if (!work_experience) {
-            return res.status(400).json('No hay datos.');
-        }
-        await clientDB.connect();
-        const user = await clientDB.db("opawork").collection("user").updateOne(
-            { _id: new ObjectId(id) },
-            {
-                $push: {
-                    works_information: work_experience // Agrega cada elemento del array al array existente en la base de datos
-
-                }
-            }
-        );
 
 
-        /*    await uploadFileToS3(req.file) */
-        if (user) {
-
-            res.json({
-                success: 200,
-                message: "experiencia subida exitosamente!",
-
-            });
-        }
-    } catch (error) {
-        res.status(500).send(error.message);
-    }
-});
-
-router.post("/api/add_education_experience/:id", cors(), async (req, res) => {
-    /*     res.setHeader('Content-Type', 'application/json'); */
-    res.setHeader('Cache-Control', 's-max-age=1, stale-while-revalidate');
-    res.setHeader('Access-Control-Allow-Origin', 'https://opawork.vercel.app');
-    const { ed } = req.body
-    const { id } = req.params
-    console.log("ed: " + ed)
-    try {
-        if (!ed) {
-            return res.status(400).json('No hay datos.');
-        }
-        await clientDB.connect();
-        if (!ed.id) {
-            ed.id = new ObjectId();
-        } else {
-            // Si ya tiene un campo `id`, lo convertimos a ObjectId
-            ed.id = new ObjectId(ed.id);
-        }
-        const user = await clientDB.db("opawork").collection("user").updateOne(
-            { _id: new ObjectId(id) },
-            {
-                $push: {
-                    education_information: ed // Agrega cada elemento del array al array existente en la base de datos
-
-                }
-            }
-        );
-
-
-        /*    await uploadFileToS3(req.file) */
-        if (user) {
-
-            res.json({
-                success: 200,
-                message: "educación subida exitosamente!",
-
-            });
-        }
-    } catch (error) {
-        res.status(500).send(error.message);
-    }
-});
-
-
-router.get("/api/get_lenguages_user/:id", cors(), async (req, res) => {
-    /*     res.setHeader('Content-Type', 'application/json'); */
-    res.setHeader('Cache-Control', 's-max-age=1, stale-while-revalidate');
-    res.setHeader('Access-Control-Allow-Origin', /* 'https://opawork.vercel.app' */'http://localhost:3000');
-    const { id } = req.params
-    console.log("leng: " + id)
-    try {
-        if (!id) {
-            return res.status(400).json({ success: 400, message: 'ID and name are required' });
-        }
-        await clientDB.connect()
-        // Encuentra y actualiza el documento del usuario
-        const updatedUser = await clientDB.db("opawork").collection("user").findOne({ _id: new ObjectId(id) });
-        const lenguages = updatedUser ? updatedUser.lenguages : [];
-
-
-        // Verifica si se realizó una actualización
-        res.status(200).json({ success: 200, lenguages });
-    } catch (error) {
-        console.error('Error al obtener los items:', error);
-    }
-});
 
 
 router.get("/api/get_education_user/:id", cors(), async (req, res) => {
@@ -2017,16 +1728,19 @@ router.post("/api/create_advise/:id", async (req, res) => {
 
 
 
-router.post('/api/login_account', async (req, res) => {
+router.post('/api/login_account', cors(), async (req, res) => {
     res.setHeader('Content-Type', 'application/json');
     res.setHeader('Cache-Control', 's-max-age=1, stale-while-revalidate');
-    res.setHeader('Access-Control-Allow-Origin', /* 'https://opawork.vercel.app' */'http://localhost:3000');
+    res.setHeader('Access-Control-Allow-Origin', ALLOWED_ORIGIN);
     res.setHeader('Access-Control-Allow-Credentials', "true");
     const { uLogin } = req.body;
     console.log(uLogin)
     try {
         // Verificar si el usuario existe
-        const user = await clientDB.db("opawork").collection("user").findOne({ email: uLogin.email });
+        await clientDB.connect();
+
+
+        const user = await clientDB.db("mercado").collection("user").findOne({ email: uLogin.email });
         if (!user) {
             return res.status(400).json({ msg: 'Credenciales inválidas' });
         }
@@ -2038,39 +1752,41 @@ router.post('/api/login_account', async (req, res) => {
         }
 
         // Crear un token y enviarlo en la respuesta
-        const payload = { id: user.id };
-        const token = jwt.sign(payload, 'secreta', { expiresIn: '1h' });
-
-        res.json({
-            success: 200,
-            user: {
+        const sessionToken = jwt.sign(
+            {
                 id: user._id,
-                nombre: user.nombre,
                 email: user.email,
-                photo: user.photo,
-                phone: user.phone,
-                city: user.city,
-                street: user.street,
-                country: user.country,
-                description: user.description,
-                type: user.type,
-                contact_info: user.contact_info,
-                benefits: user.benefits,
-                knoledge: user.knoledge,
-                first_experience: user.first_experience,
-                works_information: user.works_information,
-                education_information: user.education_information,
-                lenguages: user.lenguages,
-                sector: user.sector,
-                // Añade otros campos que quieras devolver
+
+                /*      nombre: user.nombre, */
+                // Puedes agregar más datos aquí si es necesario
+            },
+            process.env.JWT_SECRET, // Asegúrate de tener una clave secreta en tu archivo .env
+            {
+                expiresIn: '30d', // El token expirará en 1 día
             }
+        );
+
+        // Configurar la cookie con el token de sesión
+        res.cookie('sessionToken', sessionToken, {
+            httpOnly: true,
+
+            /*      domain:"https://olamercado.vercel.app", */
+            secure: process.env.NODE_ENV === 'production', // Solo en HTTPS en producción
+            sameSite: 'strict', // cambiar a None en produccion
+            maxAge: 24 * 60 * 60 * 1000 // 1 día de vida útil
         });
+
+        // No devolvemos datos del usuario, solo confirmamos el login exitoso
+        return res.status(200).json({ message: 'Login exitoso' });
     } catch (err) {
 
         console.error(err.message);
         res.status(500).send('Error en el servidor');
     }
 });
+
+
+
 
 
 
@@ -2078,175 +1794,137 @@ router.post('/api/login_account', async (req, res) => {
 router.post('/api/register_account', cors(), async (req, res) => {
     res.setHeader('Content-Type', 'application/json');
     res.setHeader('Cache-Control', 's-max-age=1, stale-while-revalidate');
-    res.setHeader('Access-Control-Allow-Origin', /* 'https://opawork.vercel.app' */'http://localhost:3030');
+    res.setHeader('Access-Control-Allow-Origin', ALLOWED_ORIGIN);
     res.setHeader('Access-Control-Allow-Credentials', "true");
 
-    const { uRegister } = req.body;
-    console.log(uRegister);
-
     try {
-        if (!uRegister) {
-            return res.status(400).json({ msg: 'Todos los campos son obligatorios' });
-        }
+        const { uRegister } = req.body;
+        console.log(uRegister)
+        // Verificar si el usuario ya está registrado
         await clientDB.connect()
-        // Verificar si el usuario ya existe
-        const user = await clientDB.db("mercado").collection("user").findOne({ email: uRegister.email });
-        console.log(user)
-        if (user) {
-            return res.status(400).json({ msg: 'El usuario ya existe' });
+        const existingUser = await clientDB.db("mercado").collection("user").findOne({ email: uRegister.email });
+        if (existingUser) {
+            return res.status(409).json({ message: 'El usuario ya está registrado' });
         }
 
-        // Hashear la contraseña antes de guardarla
-        /*  const salt = await bcrypt.genSalt(10);
-         const hashedPass = await bcrypt.hash(uRegister.password, salt); */
+        // Hashear la contraseña antes de guardar
+        const salt = await bcrypt.genSalt(10);
+        const hashedPassword = await bcrypt.hash(uRegister.password, salt);
 
-        // Crear un nuevo usuario basado en el modelo proporcionado
-        /*         if (uRegister.is_bussines === false) {
-         */
+        // Crear el nuevo usuario
         const newUser = {
-
             email: uRegister.email,
-            /*   password: hashedPass,
-              type: 'person',
-              aplicaciones: [], // Esto puede ser llenado luego o según el uRegister si se proporciona
-              photo: "",
-              sector: uRegister.sector || "",
-              contact_info: [
-                  {
-                      name: "WhatsApp",
-                      value: uRegister.phone
-                  },
-                  {
-                      name: "Facebook",
-                      value: ""
-                  },
-                  {
-                      name: "Twitter",
-                      value: ""
-                  },
-                  {
-                      name: "LinkedIn",
-                      value: ""
-                  },
-                  {
-                      name: "Github",
-                      value: ""
-                  },
-                  {
-                      name: "Github",
-                      value: ""
-                  }
-
-              ],
-              benefits: uRegister.benefits || [],
-              knoledge: uRegister.knoledge || [],
-              description: uRegister.description || [],
-              works_information: uRegister.works_information || [],
-              education_information: uRegister.education_information || [],
-              lenguages: uRegister.lenguages || [] */
+            password: hashedPassword,
+            products: [],
+            payments_methods: []
         };
 
-        const savedUser = await clientDB.db("mercado").collection("user").insertOne(newUser);
+        const addUser = await clientDB.db("mercado").collection("user").insertOne(newUser);
 
-        if (savedUser.acknowledged === true) {
-            res.json({
-                success: 200,
-                user: {
-                    id: savedUser.insertedId, // MongoDB devuelve el ID en este campo
-                    nombre: newUser.nombre,
-                    email: newUser.email,
-                    /*    type: newUser.type,
-                       aplicaciones: newUser.aplicaciones,
-                       photo: newUser.photo,
-                       sector: newUser.sector,
-                       contact_info: newUser.contact_info,
-                       benefits: newUser.benefits,
-                       knoledge: newUser.knoledge,
-                       description: newUser.description,
-                       works_information: newUser.works_information,
-                       education_information: newUser.education_information,
-                       lenguages: newUser.lenguages,
-                       sector: user.sector, */
-                }
-            });
+        if (addUser.acknowledged) {
+            return res.status(201).json({ message: 'Registro exitoso' });
+        } else {
+            return res.status(500).json({ message: 'Error al crear el usuario' });
         }
+    } catch (error) {
+        console.error('Error al procesar el registro:', error);
+        return res.status(500).json({ message: 'Error en el servidor', error: error.message });
+    } finally {
+        await clientDB.close();
+    }
+});
 
-        if (uRegister.is_bussines === true) {
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+router.post('/api/register_account_with_google', cors(), async (req, res) => {
+    res.setHeader('Content-Type', 'application/json');
+    res.setHeader('Cache-Control', 's-max-age=1, stale-while-revalidate');
+    res.setHeader('Access-Control-Allow-Origin', ALLOWED_ORIGIN);
+    res.setHeader('Access-Control-Allow-Credentials', "true");
+
+    const { credentials } = req.body;
+
+    if (!credentials) {
+        return res.status(400).json({ error: 'Credenciales inválidas' });
+    }
+
+    try {
+        await clientDB.connect();
+
+        // Verificar si el usuario ya existe en la base de datos
+        const user = await clientDB.db("mercado").collection("user").findOne({ email: credentials.user.email });
+
+        if (user) {
+            return res.status(409).json({ message: 'El usuario ya está registrado' });
+        } else {
+            // Si el usuario no existe, se registra en la base de datos
             const newUser = {
-                nombre: uRegister.name,
-                email: uRegister.email,
-                password: hashedPass,
-                type: 'person',
-                aplicaciones: [], // Esto puede ser llenado luego o según el uRegister si se proporciona
-                photo: "",
-                sector: uRegister.sector || "",
-                contact_info: [
-                    {
-                        name: "WhatsApp",
-                        value: uRegister.phone
-                    },
-                    {
-                        name: "Facebook",
-                        value: ""
-                    },
-                    {
-                        name: "Twitter",
-                        value: ""
-                    },
-                    {
-                        name: "LinkedIn",
-                        value: ""
-                    },
-                    {
-                        name: "Github",
-                        value: ""
-                    },
-                    {
-                        name: "Github",
-                        value: ""
-                    }
-
-                ],
-                benefits: uRegister.benefits || [],
-                knoledge: uRegister.knoledge || [],
-                description: uRegister.description || [],
-                works_information: uRegister.works_information || [],
-                education_information: uRegister.education_information || [],
-                lenguages: uRegister.lenguages || [],
-                sector: user.sector,
+                email: credentials.user.email,
+                name: credentials.user.displayName,
+                products: [],
+                payments_methods: []
             };
 
-            const savedUser = await clientDB.db("mercado").collection("user").insertOne(newUser);
+            const addUser = await clientDB.db("mercado").collection("user").insertOne(newUser);
 
-            if (savedUser.acknowledged === true) {
-                res.json({
-                    success: 200,
-                    user: {
-                        id: savedUser.insertedId, // MongoDB devuelve el ID en este campo
-                        nombre: newUser.nombre,
-                        email: newUser.email,
-                        type: newUser.type,
-                        aplicaciones: newUser.aplicaciones,
-                        photo: newUser.photo,
-                        sector: newUser.sector,
-                        contact_info: newUser.contact_info,
-                        benefits: newUser.benefits,
-                        knoledge: newUser.knoledge,
-                        description: newUser.description,
-                        works_information: newUser.works_information,
-                        education_information: newUser.education_information,
-                        lenguages: newUser.lenguages,
-                    }
-                });
+            if (addUser.acknowledged) {
+                return res.status(201).json({ message: 'Registro exitoso' });
+            } else {
+                return res.status(500).json({ message: 'Error al crear el usuario' });
             }
         }
 
-    } catch (err) {
-        console.error(err.message);
-        res.status(500).send('Error en el servidor');
+    } catch (error) {
+        console.error('Error al procesar el registro:', error);
+        return res.status(500).json({ error: 'Error en el servidor' });
+    } finally {
+        await clientDB.close();
     }
 });
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 router.post("/api/all_advises_bussines/:id", async (req, res) => {

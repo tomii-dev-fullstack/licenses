@@ -19,13 +19,13 @@ const client = new S3Client({
     }
 });
 
-export const uploadFileToS3 = async (file) => {
+export const uploadFileToS3 = async (file,user, product) => {
     try {
         console.log(file);
         const stream = fs.createReadStream(file.path);
         const uploadParams = {
             Bucket: AWS_BUCKET_NAME,
-            Key: file.originalname,
+            Key: `${user}/${product}/${file.originalname}`,
             Body: stream,
             ACL: 'public-read',
         };
