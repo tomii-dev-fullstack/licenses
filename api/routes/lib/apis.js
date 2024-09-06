@@ -1,1 +1,1 @@
-export const ALLOWED_ORIGIN = "http://localhost:3030"
+export const ALLOWED_ORIGIN = "https://unabuenauy.com"
