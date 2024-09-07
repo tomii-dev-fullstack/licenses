@@ -57,6 +57,114 @@ router.post("/api/purchase", (req, res) => {
 
 })
 
+
+
+
+ router.get('/api/queries', cors(), async (req, res) => {
+    res.setHeader('Content-Type', 'application/json');
+    res.setHeader('Cache-Control', 's-max-age=1, stale-while-revalidate');
+    res.setHeader('Access-Control-Allow-Origin',  ALLOWED_ORIGIN);
+    res.setHeader('Access-Control-Allow-Credentials', "true");
+    const { productId } = req.query;  // Obtener el productId de los query params
+    console.log("parametro: " + productId)
+    // Validar que el productId esté presente
+    if (!productId) {
+        return res.status(400).json({ message: 'El ID del producto es requerido.' });
+    }
+
+    try {
+        // Conectarse a la base de datos y buscar los comentarios por productId
+        await clientDB.connect();
+
+        // Realizar la búsqueda de comentarios
+        const commentsCursor = clientDB.db("mercado").collection("comment").find({ product_id: new ObjectId(productId) });
+
+        // Convertir el cursor a un array
+        const comments = await commentsCursor.toArray();
+
+        // Verificar si hay comentarios para ese productId
+        if (comments.length === 0) {
+            await clientDB.close(); // Cerrar la conexión antes de devolver la respuesta
+            return res.status(404).json({ message: 'No se encontraron comentarios para este producto.' });
+        }
+
+        // Devolver los comentarios encontrados
+        await clientDB.close(); // Cerrar la conexión antes de devolver la respuesta
+        return res.status(200).json({ data: comments });
+
+    } catch (error) {
+        await clientDB.close(); // Asegurarse de cerrar la conexión en caso de error
+        console.error('Error al obtener los comentarios:', error);
+        return res.status(500).json({ message: 'Error al obtener los comentarios.' });
+    }
+
+
+});
+
+
+ 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// Ruta para crear un nuevo comentario
+router.post('/api/queries', cors(), async (req, res) => {
+    res.setHeader('Content-Type', 'application/json');
+    res.setHeader('Cache-Control', 's-max-age=1, stale-while-revalidate');
+    res.setHeader('Access-Control-Allow-Origin', /* 'https://opawork.vercel.app' */ ALLOWED_ORIGIN);
+    res.setHeader('Access-Control-Allow-Credentials', "true");
+    const {newQueryObject } = req.body;
+    console.log(newQueryObject)
+    // Validar manualmente los campos
+    if (!newQueryObject) {
+        return res.status(400).json({ message: 'El ID del producto es requerido y debe ser una cadena de texto.' });
+    }
+
+
+    try {
+        await clientDB.connect();
+        // Crear un nuevo comentario
+        const newComment = {
+            product_id: newQueryObject.product_id,
+            user_id: newQueryObject.user_id,
+            user_name: newQueryObject.user_name,
+            text: newQueryObject.text,
+            timestamp: new Date(newQueryObject.timestamp),  // Asegurarse de que sea un objeto Date válido
+        };
+
+        // Guardar el comentario en la base de datos
+        ;
+        const result = await clientDB.db("mercado").collection("comment").insertOne(newComment);
+
+        // Responder con el comentario recién creado y el ID generado
+        return res.status(201).json({ data: result });
+    } catch (error) {
+        console.error('Error al guardar el comentario:', error);
+        res.status(500).json({ message: 'Error al guardar el comentario.' });
+    }
+});
+
+
+
+
 router.get("/", async (req, res) => {
     res.setHeader('Content-Type', 'application/json');
     res.setHeader('Cache-Control', 's-max-age=1, stale-while-revalidate');
@@ -82,6 +190,7 @@ router.get("/", async (req, res) => {
             }
         ]).toArray();
 
+
         // Comprobamos si hay datos
         if (data.length > 0) {
             console.log(data)
@@ -105,6 +214,75 @@ router.get("/", async (req, res) => {
         }
     }
 });
+
+
+
+
+
+
+router.get("/api/own_store/:id", async (req, res) => {
+    // Definir las cabeceras
+    res.setHeader('Content-Type', 'application/json');
+    res.setHeader('Cache-Control', 's-max-age=1, stale-while-revalidate');
+    res.setHeader('Access-Control-Allow-Origin', ALLOWED_ORIGIN);  // Usar una constante o variable de entorno para el origen permitido
+    res.setHeader('Access-Control-Allow-Credentials', "true");
+
+    try {
+        const { id } = req.params;
+
+        // Verificar que se haya proporcionado un ID
+        if (!id) {
+            return res.status(400).json({ message: 'Se requiere el ID del usuario.' });
+        }
+
+        // Conectar a la base de datos
+        await clientDB.connect();
+
+        // Ejecutar la consulta con agregaciones
+        const data = await clientDB.db("mercado").collection("user").aggregate([
+            {
+                $match: {
+                    _id: new ObjectId(id),  // Buscar al usuario por ID
+                }
+            },
+            {
+                $lookup: {
+                    from: "product",  // Conectar con la colección de productos
+                    localField: "_id",  // El campo en la colección de usuario
+                    foreignField: "user_id",  // El campo en la colección de productos que referencia al usuario
+                    as: "product_details"  // Los productos se almacenan en el campo `product_details`
+                }
+            }
+        ]).toArray();
+
+        // Verificar si hay datos y enviar la respuesta
+        if (data.length > 0) {
+            await clientDB.close();
+            return res.status(200).json({ data: data });
+        } else {
+            await clientDB.close();
+            // Si no hay productos, devolver 404 (no encontrado)
+            return res.status(404).json({ message: "No se encontraron productos para este usuario." });
+        }
+
+    } catch (error) {
+        // Manejar los errores y enviar un mensaje de error con código 500
+        console.error('Error:', error);
+        return res.status(500).json({
+            message: 'Ocurrió un error procesando tu solicitud.',
+            error: error.message
+        });
+    }
+});
+
+
+
+
+
+
+
+
+
 
 router.get("/api/:id/:idProduct", cors(), async (req, res) => {
     res.setHeader('Content-Type', 'application/json');
@@ -354,6 +532,7 @@ router.post("/api/upload_product", cors(), upload.array("images", 5), async (req
             price: req.body.price,
             category: req.body.category,
             sold_count: 0,
+            stars: 0,
             created_at: new Date(),
             updated_at: new Date(),
             status: req.body.status || "active",

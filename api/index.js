@@ -3,9 +3,9 @@ import { config } from "dotenv";
 import cors from "cors";
 import router from "./routes/routes.js";  // Tus rutas existentes
 import cookieParser from "cookie-parser";
-import { Server } from "socket.io";
+/* import { Server } from "socket.io";
 import http from "http";
-
+ */
 config();
 
 const app = express();
@@ -16,19 +16,19 @@ app.use(cookieParser());
 app.use(router);  // Tus rutas normales de Express
 
 // Crear el servidor HTTP a partir de Express
-const server = http.createServer(app);
+/* const server = http.createServer(app); */
 
 // Inicializar socket.io con el servidor HTTP
-const io = new Server(server, {
+/* const io = new Server(server, {
     cors: {
         origin: ["https://unabuenauy.com", "http://localhost:3030"],  // Orígenes permitidos
         methods: ["GET", "POST"],
         credentials: true
     }
-});
+}); */
 
 // Manejar la conexión de WebSocket
-io.on('connection', (socket) => {
+/* io.on('connection', (socket) => {
     let productQueries = {};  // { productId: [{ userId, userName, text, timestamp }] }
 
     console.log('Un usuario se ha conectado', socket.id);
@@ -65,9 +65,9 @@ io.on('connection', (socket) => {
         console.log('Un usuario se ha desconectado', socket.id);
     });
 });
-
+ */
 
 // Iniciar el servidor en el puerto 3001
-server.listen(3001, () => {
+app.listen(3001, () => {
     console.log("Servidor escuchando en puerto 3001");
 });
