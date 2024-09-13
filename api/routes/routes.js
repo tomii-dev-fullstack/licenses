@@ -11,6 +11,10 @@ import { Payment, MercadoPagoConfig, Preference } from "mercadopago"
 import multer from "multer";
 import path from "path";
 import { ALLOWED_ORIGIN } from "./lib/apis.js"
+import PayPalClient from "../paypal/paypal.js"
+
+const { PAYPAL_CLIENT_ID, PAYPAL_CLIENT_SECRET } = process.env;
+const base = "https://api-m.sandbox.paypal.com";
 /* import { calculateMatch } from "../match.js"
 import { calculateMatchByUserByJob } from "../objet-match.js"; */
 const router = Router()
@@ -60,10 +64,10 @@ router.post("/api/purchase", (req, res) => {
 
 
 
- router.get('/api/queries', cors(), async (req, res) => {
+router.get('/api/queries', cors(), async (req, res) => {
     res.setHeader('Content-Type', 'application/json');
     res.setHeader('Cache-Control', 's-max-age=1, stale-while-revalidate');
-    res.setHeader('Access-Control-Allow-Origin',  ALLOWED_ORIGIN);
+    res.setHeader('Access-Control-Allow-Origin', ALLOWED_ORIGIN);
     res.setHeader('Access-Control-Allow-Credentials', "true");
     const { productId } = req.query;  // Obtener el productId de los query params
     console.log("parametro: " + productId)
@@ -77,11 +81,11 @@ router.post("/api/purchase", (req, res) => {
         await clientDB.connect();
 
         // Realizar la búsqueda de comentarios
-        const commentsCursor = clientDB.db("mercado").collection("comment").find({ product_id: new ObjectId(productId) });
+        const comments = await clientDB.db("mercado").collection("comment").find({ product_id: new ObjectId(productId) }).toArray();
 
         // Convertir el cursor a un array
-        const comments = await commentsCursor.toArray();
-
+        /*         const comments = await commentsCursor.toArray(); */
+        console.log(comments);
         // Verificar si hay comentarios para ese productId
         if (comments.length === 0) {
             await clientDB.close(); // Cerrar la conexión antes de devolver la respuesta
@@ -89,20 +93,170 @@ router.post("/api/purchase", (req, res) => {
         }
 
         // Devolver los comentarios encontrados
-        await clientDB.close(); // Cerrar la conexión antes de devolver la respuesta
+        /*    await clientDB.close(); // Cerrar la conexión antes de devolver la respuesta */
         return res.status(200).json({ data: comments });
 
     } catch (error) {
         await clientDB.close(); // Asegurarse de cerrar la conexión en caso de error
-        console.error('Error al obtener los comentarios:', error);
+        console.error('Error al obtener los comentarios de la publicacion:', error);
         return res.status(500).json({ message: 'Error al obtener los comentarios.' });
     }
 
 
 });
+router.get('/api/all_queries/:id', cors(), async (req, res) => {
+    res.setHeader('Content-Type', 'application/json');
+    res.setHeader('Cache-Control', 's-max-age=1, stale-while-revalidate');
+    res.setHeader('Access-Control-Allow-Origin', ALLOWED_ORIGIN);
+    res.setHeader('Access-Control-Allow-Credentials', "true");
+
+    try {
+        const { id } = req.params
+        if (!id) {
+            return res.status(400).json({ message: 'El ID es requerido.' });
+        }
+        // Conectarse a la base de datos
+        await clientDB.connect();
+
+        // Realizar la búsqueda de comentarios en la colección
+        const comments = await clientDB.db("mercado").collection("comment").find({ product_owner_id: new ObjectId(id) }).toArray();
+
+        // Verificar si se encontraron comentarios
+        if (comments.length === 0) {
+            return res.status(404).json({ message: 'No se encontraron comentarios para este producto.' });
+        }
+        console.log("querys por prop:" + comments)
+        // Devolver los comentarios encontrados
+        return res.status(200).json({ data: comments });
+
+    } catch (error) {
+        console.error('Error al obtener los comentarios:', error);
+        return res.status(500).json({ message: 'Error al obtener los comentarios.' });
+
+    }/*  finally {
+      // Asegurarse de cerrar la conexión a la base de datos
+      await clientDB.close();
+    } */
+});
 
 
- 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+router.post('/api/reply', cors(), async (req, res) => {
+    res.setHeader('Content-Type', 'application/json');
+    res.setHeader('Cache-Control', 's-max-age=1, stale-while-revalidate');
+    res.setHeader('Access-Control-Allow-Origin', /* 'https://opawork.vercel.app' */ ALLOWED_ORIGIN);
+    res.setHeader('Access-Control-Allow-Credentials', "true");
+    const { reply } = req.body;
+    console.log(reply)
+    // Validar manualmente los campos
+    if (!reply) {
+        return res.status(400).json({ message: 'DATOS REQUERIDOS' });
+    }
+
+
+    try {
+        await clientDB.connect();
+        // Crear un nuevo comentario
+        /*        const newComment = {
+                   product_reply_id: new ObjectId(reply.product_reply_id),
+                   user_reply_id: new ObjectId(reply.user_reply_id),
+                   reply: reply.text,
+                   timestamp: new Date(reply.timestamp),  // Asegurarse de que sea un objeto Date válido
+               };
+        */
+        // Guardar el comentario en la base de datos
+        ;
+        const result = await clientDB.db("mercado").collection("comment").updateOne(
+            { _id: new ObjectId(reply.id_reply_comment) }, // Filtro de búsqueda
+            { $set: { reply: { text: reply.text, user_owner_id: new ObjectId(reply.user_owner_id), timestamp: reply.timestamp, answered: true } } } // Actualización de la réplica completa
+        );
+
+        // Responder con el comentario recién creado y el ID generado
+        return res.status(201).json({ data: result });
+    } catch (error) {
+        console.error('Error al guardar el comentario:', error);
+        res.status(500).json({ message: 'Error al guardar el comentario.' });
+    }
+});
+
+
+
+
+
+
+router.get('/api/products', cors(), async (req, res) => {
+    res.setHeader('Content-Type', 'application/json');
+    res.setHeader('Cache-Control', 's-max-age=1, stale-while-revalidate');
+    res.setHeader('Access-Control-Allow-Origin', ALLOWED_ORIGIN);
+    res.setHeader('Access-Control-Allow-Credentials', "true");
+
+    const { query } = req.query;  // Obtener la query de los query params
+    console.log("Parámetro de búsqueda: " + query);
+
+    // Validar que la query esté presente
+    if (!query) {
+        return res.status(400).json({ message: 'La query es requerida.' });
+    }
+
+    try {
+        // Conectarse a la base de datos
+        await clientDB.connect();
+
+        // Realizar la búsqueda en la colección 'product' por título de producto o nombre de tienda
+        const products = await clientDB.db("mercado").collection("product").find({
+            $or: [
+                { title: { $regex: query, $options: 'i' } },  // Búsqueda insensible a mayúsculas en el título del producto
+                { store_name: { $regex: query, $options: 'i' } }
+            ]
+        }).toArray();
+
+        // Verificar si se encontraron productos
+        if (products.length === 0) {
+            /*   await clientDB.close(); */ // Cerrar la conexión antes de devolver la respuesta
+            return res.status(404).json({ message: 'No se encontraron productos o tiendas que coincidan con la búsqueda.' });
+        }
+        console.log(products)
+        // Devolver los productos encontrados
+      /*   await clientDB.close() */; // Cerrar la conexión antes de devolver la respuesta
+        res.status(200).json({ data: products });
+
+    } catch (error) {
+        /*     await clientDB.close(); */ // Asegurarse de cerrar la conexión en caso de error
+        console.error('Error al buscar productos:', error);
+        return res.status(500).json({ message: 'Error al buscar productos.' });
+    }
+});
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -131,7 +285,7 @@ router.post('/api/queries', cors(), async (req, res) => {
     res.setHeader('Cache-Control', 's-max-age=1, stale-while-revalidate');
     res.setHeader('Access-Control-Allow-Origin', /* 'https://opawork.vercel.app' */ ALLOWED_ORIGIN);
     res.setHeader('Access-Control-Allow-Credentials', "true");
-    const {newQueryObject } = req.body;
+    const { newQueryObject } = req.body;
     console.log(newQueryObject)
     // Validar manualmente los campos
     if (!newQueryObject) {
@@ -143,10 +297,13 @@ router.post('/api/queries', cors(), async (req, res) => {
         await clientDB.connect();
         // Crear un nuevo comentario
         const newComment = {
-            product_id: newQueryObject.product_id,
-            user_id: newQueryObject.user_id,
+            product_id: new ObjectId(newQueryObject.product_id),
+            user_id: new ObjectId(newQueryObject.user_id),
             user_name: newQueryObject.user_name,
             text: newQueryObject.text,
+            reply: {
+                answered: false,
+            },
             timestamp: new Date(newQueryObject.timestamp),  // Asegurarse de que sea un objeto Date válido
         };
 
@@ -191,6 +348,7 @@ router.get("/", async (req, res) => {
         ]).toArray();
 
 
+
         // Comprobamos si hay datos
         if (data.length > 0) {
             console.log(data)
@@ -209,9 +367,9 @@ router.get("/", async (req, res) => {
         });
     } finally {
         // Cerramos la conexión de manera segura
-        if (clientDB) {
-            clientDB.close();
-        }
+        /*   if (clientDB) {
+              clientDB.close();
+          } */
     }
 });
 
@@ -340,59 +498,80 @@ router.get("/api/:id/:idProduct", cors(), async (req, res) => {
     } catch (error) {
         console.error(error);
         return res.status(500).json({ message: 'An error occurred while processing your request', error: error.message });
-    } finally {
+    } /* finally {
         // Cerramos la conexión a la base de datos en el bloque `finally`
         clientDB.close();
-    }
+    } */
 });
 
-router.get("/api/all_advises/:id", async (req, res) => {
+
+
+
+
+router.get("/api/edit_product/:id", cors(), async (req, res) => {
     res.setHeader('Content-Type', 'application/json');
     res.setHeader('Cache-Control', 's-max-age=1, stale-while-revalidate');
-    res.setHeader('Access-Control-Allow-Origin', /* 'https://opawork.vercel.app' */'http://localhost:3000');
+    res.setHeader('Access-Control-Allow-Origin', ALLOWED_ORIGIN);
+    res.setHeader('Access-Control-Allow-Credentials', "true");
+
     try {
         const { id } = req.params;
+        console.log(id);
+
+        // Validación mejorada de los parámetros
         if (!id) {
-            return res.status(400).json({ message: 'user_id is required' });
+            return res.status(400).json({ message: 'Both id and idProduct are required' });
         }
+
         await clientDB.connect();
 
-        console.log(id)
-        const applications = await clientDB.db("opawork").collection("job").aggregate([
+        // Convertir idProduct a ObjectId para la consulta
+        const product = await clientDB.db("mercado").collection("product").aggregate([
             {
                 $match: {
-                    user_id: new ObjectId(id) // Filtramos por el ID del usuario del negocio
+                    _id: new ObjectId(id) // Filtramos por el product ID
                 }
             },
             {
                 $lookup: {
-                    from: "application", // Nombre de la colección de aplicaciones
+                    from: "user", // Nombre de la colección de aplicaciones
+                    localField: "user_id", // Campo en la colección de trabajos que coincide con el ObjectId
+                    foreignField: "_id", // Campo en la colección de aplicaciones que coincide con el ObjectId del trabajo
+                    as: "user_details" // Nombre del array resultante
+                }
+            },
+            {
+                $unwind: "$user_details" // Desplazamos los datos del array de aplicaciones
+            },
+            {
+                $lookup: {
+                    from: "review", // Nombre de la colección de aplicaciones
                     localField: "_id", // Campo en la colección de trabajos que coincide con el ObjectId
-                    foreignField: "job_id", // Campo en la colección de aplicaciones que coincide con el ObjectId del trabajo
-                    as: "applications" // Nombre del array resultante
+                    foreignField: "product_id", // Campo en la colección de aplicaciones que coincide con el ObjectId del trabajo
+                    as: "product_details" // Nombre del array resultante
                 }
             }
         ]).toArray();
 
+        console.log(product);
 
-        console.log(applications)
-        if (applications.length > 0) {
-            res.status(200).json(applications);
-            /*      clientDB.close(); */
+        if (product.length > 0) {
+            return res.status(200).json({ data: product });
         } else {
-            res.status(404).json({ message: 'No se encontraron postulaciones para el usuario dado' });
-            /*     clientDB.close(); */
+            return res.status(404).json({ message: 'No products found for the given ID' });
         }
 
     } catch (error) {
         console.error(error);
-        res.status(500).json({ message: 'An error occurred while processing your request', error: error.message });
+        return res.status(500).json({ message: 'An error occurred while processing your request', error: error.message });
+    } /* finally {
+        // Cerramos la conexión a la base de datos en el bloque `finally`
         clientDB.close();
-    }
-    finally {
-        clientDB.close();
-    }
-})
+    } */
+});
+
+
+
 
 
 
@@ -580,6 +759,141 @@ router.post("/api/upload_product", cors(), upload.array("images", 5), async (req
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+router.post("/api/edit_product/:id", cors(), upload.array("images", 5), async (req, res) => {
+    res.setHeader('Content-Type', 'application/json');
+    res.setHeader('Cache-Control', 's-max-age=1, stale-while-revalidate');
+    res.setHeader('Access-Control-Allow-Origin', ALLOWED_ORIGIN);
+
+    const { id } = req.params;  // Obtener el ID del producto desde la URL
+
+    try {
+        await clientDB.connect();  // Conectar a la base de datos
+
+        // Verificar si el producto existe
+        const product = await clientDB.db("mercado").collection("product").findOne({ _id: new ObjectId(id) });
+        if (!product) {
+            return res.status(404).json({
+                message: 'Producto no encontrado',
+                status: 404
+            });
+        }
+
+        // Preparar el objeto de actualización
+        const updateData = {
+            title: req.body.title || product.title,
+            description: req.body.description || product.description,
+            stock: req.body.stock !== undefined ? Number(req.body.stock) : product.stock,
+            discount: req.body.discount !== undefined ? Number(req.body.discount) : product.discount,
+            price: req.body.price || product.price,
+            category: req.body.category || product.category,
+            status: req.body.status || product.status,
+            shipping_details: {
+                shipping_cost: req.body.shipping_cost || product.shipping_details.shipping_cost
+            },
+
+            delivery: req.body.delivery || product.delivery,
+            condition: req.body.condition || product.condition,
+            warranty: req.body.warranty || product.warranty,
+            colors: req.body.colors ? req.body.colors.split(",") : product.colors,
+            updated_at: new Date(),
+        };
+
+        // Si hay nuevas imágenes, actualizarlas
+        if (req.files && req.files.length > 0) {
+            updateData.images = req.files.map(file => file.originalname);  // Actualizar con nuevas imágenes
+        }
+
+        // Actualizar el producto en la base de datos
+        const updated = await clientDB.db("mercado").collection("product").updateOne(
+            { _id: new ObjectId(id) },
+            { $set: updateData }
+        );
+
+        // Verificar si la actualización fue exitosa
+        if (updated.modifiedCount === 1) {
+            // Subir archivos a S3 de manera asíncrona si hay imágenes nuevas
+            if (req.files && req.files.length > 0) {
+                const uploadPromises = req.files.map(file => uploadFileToS3(file, req.body.user, id));
+                await Promise.all(uploadPromises);  // Esperar a que todos los archivos se suban
+            }
+
+            // Responder con éxito
+            res.status(200).json({
+                message: 'Producto actualizado exitosamente',
+                status: 200,
+                product_id: id
+            });
+        } else {
+            // Si no se actualizó el producto
+            res.status(400).json({
+                message: 'No se pudo actualizar el producto',
+                status: 400
+            });
+        }
+    } catch (error) {
+        console.error('Error al actualizar el producto:', error);
+
+        // Responder con error
+        res.status(500).json({
+            message: 'Error al actualizar el producto',
+            error: error.message,
+            status: 500
+        });
+    } finally {
+        // Asegurar que la conexión a la base de datos se cierra
+        await clientDB.close();
+    }
+});
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 router.get("/api/match/explorer/:id", cors(), async (req, res) => {
     res.setHeader('Content-Type', 'application/json');
     res.setHeader('Cache-Control', 's-max-age=1, stale-while-revalidate');
@@ -728,50 +1042,9 @@ router.post("/api/upload_profile_image", cors(), async (req, res) => {
         res.status(500).send(error.message);
     }
 });
-router.post("/api/update_personal_information", cors(), async (req, res) => {
-    /*     res.setHeader('Content-Type', 'application/json'); */
-    res.setHeader('Cache-Control', 's-max-age=1, stale-while-revalidate');
-    res.setHeader('Access-Control-Allow-Origin', 'https://opawork.vercel.app');
-    const { user_info } = req.body
-    console.log("descripcion" + user_info.id, user_info.ciudad, user_info.direccion, user_info.celular, user_info.pais)
-    try {
-        if (!user_info) {
-            return res.status(400).json('No hay datos.');
-        }
-        await clientDB.connect();
-        const user = await clientDB.db("opawork").collection("user").findOneAndUpdate(
-            { _id: new ObjectId(user_info.id) },
-            {
-                $set: {
-                    email: user_info.email, phone: user_info.celular, city: user_info.ciudad,
-                    street: user_info.direccion, country: user_info.pais,
-                }
-            }
-        );
 
 
-        /*    await uploadFileToS3(req.file) */
 
-        res.json({
-            success: 200,
-            message: "Archivo subido exitosamente!",
-            /* user: {
-                id: user._id,
-                name: user.nombre,
-                description: user.description,
-                phone: user.phone,
-                email: user.email,
-                ciudad: user.city,
-                direccion: user.street,
-                pais: user.country,
-                photo: user.photo,
-                type: user.type
-            } */
-        });
-    } catch (error) {
-        res.status(500).send(error.message);
-    }
-});
 
 
 
@@ -785,507 +1058,6 @@ router.post("/api/update_personal_information", cors(), async (req, res) => {
 
 
 
-
-
-
-
-router.get("/api/get_education_user/:id", cors(), async (req, res) => {
-    /*     res.setHeader('Content-Type', 'application/json'); */
-    res.setHeader('Cache-Control', 's-max-age=1, stale-while-revalidate');
-    res.setHeader('Access-Control-Allow-Origin', /* 'https://opawork.vercel.app' */'http://localhost:3000');
-    const { id } = req.params
-    console.log("eds: " + id)
-    try {
-        if (!id) {
-            return res.status(400).json({ success: 400, message: 'ID and name are required' });
-        }
-        await clientDB.connect()
-        // Encuentra y actualiza el documento del usuario
-        const updatedUser = await clientDB.db("opawork").collection("user").findOne({ _id: new ObjectId(id) });
-        const education = updatedUser ? updatedUser.education_information : [];
-
-
-        // Verifica si se realizó una actualización
-        res.status(200).json({ success: 200, education });
-    } catch (error) {
-        console.error('Error al obtener los items:', error);
-    }
-});
-
-
-
-
-
-router.get("/api/get_information_user/:id", cors(), async (req, res) => {
-    /*     res.setHeader('Content-Type', 'application/json'); */
-    res.setHeader('Cache-Control', 's-max-age=1, stale-while-revalidate');
-    res.setHeader('Access-Control-Allow-Origin', /* 'https://opawork.vercel.app' */'http://localhost:3000');
-    const { user_id } = req.params
-    console.log("user:  " + id)
-    try {
-        if (!id) {
-            return res.status(400).json({ success: 400, message: 'ID and name are required' });
-        }
-        await clientDB.connect()
-        // Encuentra y actualiza el documento del usuario
-        const user = await clientDB.db("opawork").collection("user").findOne({ _id: new ObjectId(user_id) });
-
-
-        // Verifica si se realizó una actualización
-        res.status(200).json({ success: 200, user });
-    } catch (error) {
-        console.error('Error al obtener los items:', error);
-    }
-});
-
-
-
-
-router.delete("/api/delete_education_user/:id", cors(), async (req, res) => {
-    res.setHeader('Cache-Control', 's-max-age=1, stale-while-revalidate');
-    res.setHeader('Access-Control-Allow-Origin', 'https://opawork.vercel.app');
-    const { id } = req.params;
-    const { idItem } = req.body;
-
-    try {
-        await clientDB.connect();
-        console.log(id, "---------", idItem)
-        // Convertir `edId` a un ObjectId
-        const result = await clientDB.db("opawork").collection("user").updateOne(
-            { _id: new ObjectId(id) },
-            {
-                $pull: {
-                    education_information: { _id: new ObjectId(idItem) } // Elimina el elemento cuyo id coincide con edId
-                }
-            }
-        );
-        if (result.modifiedCount > 0) {
-            console.log(result);
-            res.json({
-                success: 200,
-                message: "¡Educación eliminada exitosamente!",
-            });
-        } else {
-            res.status(404).json({
-                success: 404,
-                message: "Usuario o experiencia educativa no encontrada",
-            });
-        }
-    } catch (error) {
-        res.status(500).send(error.message);
-    }
-});
-
-router.delete("/api/delete_user_lenguage/:id", cors(), async (req, res) => {
-    res.setHeader('Cache-Control', 's-max-age=1, stale-while-revalidate');
-    res.setHeader('Access-Control-Allow-Origin', 'https://opawork.vercel.app');
-    const { id } = req.params;
-    const { lenguage } = req.body;
-
-    try {
-        await clientDB.connect();
-        console.log(id, "---------", lenguage)
-        // Convertir `edId` a un ObjectId
-        const result = await clientDB.db("opawork").collection("user").updateOne(
-            { _id: new ObjectId(id) },
-            {
-                $pull: {
-                    lenguages: lenguage // Elimina el elemento cuyo id coincide con edId
-                }
-            }
-        );
-        if (result.modifiedCount > 0) {
-            console.log(result);
-            res.json({
-                success: 200,
-                message: "¡Educación eliminada exitosamente!",
-            });
-        } else {
-            res.status(404).json({
-                success: 404,
-                message: "Usuario o experiencia educativa no encontrada",
-            });
-        }
-    } catch (error) {
-        res.status(500).send(error.message);
-    }
-});
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-router.get("/api/get_job/:id", cors(), async (req, res) => {
-    res.setHeader('Content-Type', 'application/json');
-    res.setHeader('Cache-Control', 's-max-age=1, stale-while-revalidate');
-    res.setHeader('Access-Control-Allow-Origin', /* 'https://opawork.vercel.app' */'http://localhost:3000');
-    const { id } = req.params
-    console.log("id job: " + id)
-    try {
-        if (!id) {
-            return res.status(400).json({ success: 400, message: 'ID and name are required' });
-        }
-        await clientDB.connect()
-        // Encuentra y actualiza el documento del usuario
-        const job = await clientDB.db("opawork").collection("job").aggregate([
-            {
-                $match: { _id: new ObjectId(id) } // Encuentra el documento específico en la colección job
-            },
-            {
-                $lookup: {
-                    from: 'user', // Nombre de la colección a unir (user)
-                    localField: 'user_id', // Campo en la colección job que relaciona con la colección user
-                    foreignField: '_id', // Campo en la colección user que coincide con localField
-                    as: 'userInfo' // Nombre del campo de salida donde se almacenará la información de user
-                }
-            },
-            {
-                $unwind: '$userInfo' // Desempaqueta la información del usuario si sólo esperas un resultado
-            }
-        ]).toArray() // Devuelve los resultados como un array
-
-        console.log(job)
-        // Verifica si se realizó una actualización
-        res.status(200).json({ success: 200, job });
-    } catch (error) {
-        console.error('Error al obtener los items:', error);
-    }
-});
-
-router.get("/api/get_advises_by_bussines/:id", cors(), async (req, res) => {
-    res.setHeader('Content-Type', 'application/json');
-    res.setHeader('Cache-Control', 's-max-age=1, stale-while-revalidate');
-    res.setHeader('Access-Control-Allow-Origin', /* 'https://opawork.vercel.app' */'http://localhost:3000');
-    const { id } = req.params
-    console.log("id job: " + id)
-    try {
-        if (!id) {
-            return res.status(400).json({ success: 400, message: 'ID and name are required' });
-        }
-        await clientDB.connect()
-        // Encuentra y actualiza el documento del usuario
-        const jobs = await clientDB.db("opawork").collection("user").aggregate([
-            {
-                $match: { _id: new ObjectId(id) } // Encuentra el documento específico en la colección job
-            },
-            {
-                $lookup: {
-                    from: 'job', // Nombre de la colección a unir (user)
-                    localField: '_id', // Campo en la colección job que relaciona con la colección user
-                    foreignField: 'user_id', // Campo en la colección user que coincide con localField
-                    as: 'userInfo' // Nombre del campo de salida donde se almacenará la información de user
-                }
-            },
-            {
-                $unwind: '$userInfo' // Desempaqueta la información del usuario si sólo esperas un resultado
-            }
-        ]).toArray() // Devuelve los resultados como un array
-
-        console.log(jobs)
-        // Verifica si se realizó una actualización
-        res.status(200).json({ success: 200, jobs });
-    } catch (error) {
-        console.error('Error al obtener los items:', error);
-    }
-});
-
-
-
-
-
-
-
-
-
-router.get("/api/get_works_user/:id", cors(), async (req, res) => {
-    /*     res.setHeader('Content-Type', 'application/json'); */
-    res.setHeader('Cache-Control', 's-max-age=1, stale-while-revalidate');
-    res.setHeader('Access-Control-Allow-Origin', /* 'https://opawork.vercel.app' */'http://localhost:3000');
-    const { id } = req.params
-    console.log("eds: " + id)
-    try {
-        if (!id) {
-            return res.status(400).json({ success: 400, message: 'ID and name are required' });
-        }
-        await clientDB.connect()
-        // Encuentra y actualiza el documento del usuario
-        const updatedUser = await clientDB.db("opawork").collection("user").findOne({ _id: new ObjectId(id) });
-        const works_information = updatedUser ? updatedUser.works_information : [];
-
-
-        // Verifica si se realizó una actualización
-        res.status(200).json({ success: 200, works_information });
-    } catch (error) {
-        console.error('Error al obtener los items:', error);
-    }
-});
-
-
-
-
-router.delete("/api/delete_work_user/:id", cors(), async (req, res) => {
-    res.setHeader('Cache-Control', 's-max-age=1, stale-while-revalidate');
-    res.setHeader('Access-Control-Allow-Origin', 'https://opawork.vercel.app');
-    const { id } = req.params;
-    const { idItem } = req.body;
-
-    try {
-        await clientDB.connect();
-        console.log(id, "---------", idItem)
-        // Convertir `edId` a un ObjectId
-        const result = await clientDB.db("opawork").collection("user").updateOne(
-            { _id: new ObjectId(id) },
-            {
-                $pull: {
-                    works_information: { _id: new ObjectId(idItem) } // Elimina el elemento cuyo id coincide con edId
-                }
-            }
-        );
-        if (result.modifiedCount > 0) {
-            console.log(result);
-            res.json({
-                success: 200,
-                message: "Trabajo eliminado exitosamente!",
-            });
-        } else {
-            res.status(404).json({
-                success: 404,
-                message: "Usuario o trabajo educativa no encontrada",
-            });
-        }
-    } catch (error) {
-        res.status(500).send(error.message);
-    }
-});
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-router.post("/api/update_benefits_advise_by_user/:id", cors(), async (req, res) => {
-    res.setHeader('Content-Type', 'application/json');
-    res.setHeader('Cache-Control', 's-max-age=1, stale-while-revalidate');
-    res.setHeader('Access-Control-Allow-Origin', 'https://opawork.vercel.app');
-
-    const { id } = req.params;  // Cambiado _id a id para mayor claridad
-    const { benefitsJob, company, title, description } = req.body;
-
-    console.log("Beneficios:", benefitsJob);
-    console.log("ID:", id);
-
-    if (!Array.isArray(benefitsJob) || !id || !company || !title || !description) {
-        return res.status(400).json({ error: 'No hay datos válidos.' });
-    }
-
-    try {
-        await clientDB.connect();  // Conectar a la base de datos si no está ya conectada
-
-        const result = await clientDB.db("opawork").collection("job").updateOne(
-            { _id: new ObjectId(id) },  // Filtro para encontrar el documento
-            {
-                $set: {
-                    benefits: benefitsJob, title: title, company: company, description: description // Reemplaza la lista de beneficios en lugar de usar 
-                }
-            },
-            { returnOriginal: false } // Devuelve el documento actualizado
-        );
-        console.log(result)
-        if (result.value) {
-            console.log("Documento actualizado:", result.value);
-            res.status(200).json({
-                success: true,
-                message: "Beneficios actualizados exitosamente!"
-            });
-        } else {
-            res.status(404).json({
-                success: false,
-                message: "Documento no encontrado."
-            });
-        }
-    } catch (error) {
-        console.error("Error al actualizar beneficios:", error);
-        res.status(500).json({
-            success: false,
-            message: error.message
-        });
-    } finally {
-        await clientDB.close(); // Asegúrate de cerrar la conexión si es necesario
-    }
-});
-router.post("/api/update_mod_advise_by_user/:id", cors(), async (req, res) => {
-    res.setHeader('Content-Type', 'application/json');
-    res.setHeader('Cache-Control', 's-max-age=1, stale-while-revalidate');
-    res.setHeader('Access-Control-Allow-Origin', 'https://opawork.vercel.app');
-
-    const { id } = req.params;  // Cambiado _id a id para mayor claridad
-    const { modJob } = req.body;
-
-    console.log("modos:", modJob);
-    console.log("ID:", id);
-
-    if (!Array.isArray(modJob) || !id) {
-        return res.status(400).json({ error: 'No hay datos válidos.' });
-    }
-
-    try {
-        await clientDB.connect();  // Conectar a la base de datos si no está ya conectada
-
-        const result = await clientDB.db("opawork").collection("job").updateOne(
-            { _id: new ObjectId(id) },  // Filtro para encontrar el documento
-            {
-                $set: {
-                    modJob: modJob // Reemplaza la lista de beneficios en lugar de usar 
-                }
-            },
-            { returnOriginal: false } // Devuelve el documento actualizado
-        );
-        console.log(result)
-        if (result.value) {
-            console.log("Documento actualizado:", result.value);
-            res.status(200).json({
-                success: true,
-                message: "modos actualizados exitosamente!"
-            });
-        } else {
-            res.status(404).json({
-                success: false,
-                message: "Documento no encontrado."
-            });
-        }
-    } catch (error) {
-        console.error("Error al actualizar beneficios:", error);
-        res.status(500).json({
-            success: false,
-            message: error.message
-        });
-    } finally {
-        await clientDB.close(); // Asegúrate de cerrar la conexión si es necesario
-    }
-});
-
-
-
-
-
-
-
-router.delete("/api/delete_contact_user/:id", cors(), async (req, res) => {
-    res.setHeader('Content-Type', 'application/json');
-    res.setHeader('Cache-Control', 's-max-age=1, stale-while-revalidate');
-    res.setHeader('Access-Control-Allow-Origin', 'https://opawork.vercel.app');
-    const { name } = req.body
-    const { id } = req.params
-    console.log(id, name)
-    try {
-        if (!id || !name) {
-            return res.status(400).json({ success: 400, message: 'ID and name are required' });
-        }
-        await clientDB.connect()
-        // Encuentra y actualiza el documento del usuario
-        const result = await clientDB.db("opawork").collection("user").updateOne(
-            { _id: new ObjectId(id) }, // Filtro para encontrar al usuario
-            {
-                $pull: {
-                    benefits: name // Elimina el ítem con el contact_id especificado
-                }
-            }
-        );
-
-        // Verifica si se realizó una actualización
-        if (result.modifiedCount === 0) {
-            console.log('No se encontró el documento o el ítem ya no estaba en el array.');
-        } else {
-            console.log('Ítem eliminado correctamente.');
-        }
-    } catch (error) {
-        console.error('Error al eliminar el ítem:', error);
-    }
-});
 router.post("/api/update_benefits_user/:id", cors(), async (req, res) => {
     res.setHeader('Content-Type', 'application/json');
     res.setHeader('Cache-Control', 's-max-age=1, stale-while-revalidate');
@@ -1321,138 +1093,12 @@ router.post("/api/update_benefits_user/:id", cors(), async (req, res) => {
         console.error('Error al eliminar el ítem:', error);
     }
 });
-router.delete("/api/delete_benefits_user/:id", cors(), async (req, res) => {
-    res.setHeader('Content-Type', 'application/json');
-    res.setHeader('Cache-Control', 's-max-age=1, stale-while-revalidate');
-    res.setHeader('Access-Control-Allow-Origin', 'https://opawork.vercel.app');
-    const { name } = req.body
-    const { id } = req.params
-    console.log(id, name)
-    try {
-        if (!id || !name) {
-            return res.status(400).json({ success: 400, message: 'ID and name are required' });
-        }
-        await clientDB.connect()
-        // Encuentra y actualiza el documento del usuario
-        const result = await clientDB.db("opawork").collection("user").updateOne(
-            { _id: new ObjectId(id) }, // Filtro para encontrar al usuario
-            {
-                $pull: {
-                    benefits: name // Elimina el ítem con el contact_id especificado
-                }
-            }
-        );
-
-        // Verifica si se realizó una actualización
-        if (result.modifiedCount === 0) {
-            console.log('No se encontró el documento o el ítem ya no estaba en el array.');
-        } else {
-            console.log('Ítem eliminado correctamente.');
-        }
-    } catch (error) {
-        console.error('Error al eliminar el ítem:', error);
-    }
-});
+;
 
 
 
-router.delete("/api/delete_knoledge_user/:id", cors(), async (req, res) => {
-    res.setHeader('Content-Type', 'application/json');
-    res.setHeader('Cache-Control', 's-max-age=1, stale-while-revalidate');
-    res.setHeader('Access-Control-Allow-Origin', 'https://opawork.vercel.app');
-    const { name } = req.body
-    const { id } = req.params
-    console.log(id, name)
-    try {
-        if (!id || !name) {
-            return res.status(400).json({ success: 400, message: 'ID and name are required' });
-        }
-        await clientDB.connect()
-        // Encuentra y actualiza el documento del usuario
-        const result = await clientDB.db("opawork").collection("user").updateOne(
-            { _id: new ObjectId(id) }, // Filtro para encontrar al usuario
-            {
-                $pull: {
-                    knoledge: name // Elimina el ítem con el contact_id especificado
-                }
-            }
-        );
 
-        // Verifica si se realizó una actualización
-        if (result.modifiedCount === 0) {
-            console.log('No se encontró el documento o el ítem ya no estaba en el array.');
-        } else {
-            console.log('Ítem eliminado correctamente.');
-        }
-    } catch (error) {
-        console.error('Error al eliminar el ítem:', error);
-    }
-});
 //contact en ruta 
-router.get("/api/get_benefits_user/:id", cors(), async (req, res) => {
-    res.setHeader('Content-Type', 'application/json');
-    res.setHeader('Cache-Control', 's-max-age=1, stale-while-revalidate');
-    res.setHeader('Access-Control-Allow-Origin', /* 'https://opawork.vercel.app' */'http://localhost:3000');
-    const { id } = req.params
-    try {
-        if (!id) {
-            return res.status(400).json({ success: 400, message: 'ID and name are required' });
-        }
-        await clientDB.connect()
-        // Encuentra y actualiza el documento del usuario
-        const updatedUser = await clientDB.db("opawork").collection("user").findOne({ _id: new ObjectId(id) });
-        const benefits = updatedUser ? updatedUser.benefits : [];
-
-
-        // Verifica si se realizó una actualización
-        res.status(200).json({ success: 200, benefits });
-    } catch (error) {
-        console.error('Error al eliminar el ítem:', error);
-    }
-});
-router.get("/api/update_knoledge_user/:id", cors(), async (req, res) => {
-    res.setHeader('Content-Type', 'application/json');
-    res.setHeader('Cache-Control', 's-max-age=1, stale-while-revalidate');
-    res.setHeader('Access-Control-Allow-Origin', 'https://opawork.vercel.app');
-    const { id } = req.params
-    try {
-        if (!id) {
-            return res.status(400).json({ success: 400, message: 'ID and name are required' });
-        }
-        await clientDB.connect()
-        // Encuentra y actualiza el documento del usuario
-        const updatedUser = await clientDB.db("opawork").collection("user").findOne({ _id: new ObjectId(id) });
-        const knoledge = updatedUser ? updatedUser.knoledge : [];
-
-
-        // Verifica si se realizó una actualización
-        res.status(200).json({ success: 200, knoledge });
-    } catch (error) {
-        console.error('Error al eliminar el ítem:', error);
-    }
-});
-router.get("/api/get_knoledge_user/:id", cors(), async (req, res) => {
-    res.setHeader('Content-Type', 'application/json');
-    res.setHeader('Cache-Control', 's-max-age=1, stale-while-revalidate');
-    res.setHeader('Access-Control-Allow-Origin', /* 'https://opawork.vercel.app' */'http://localhost:3000');
-    const { id } = req.params
-    try {
-        if (!id) {
-            return res.status(400).json({ success: 400, message: 'ID and name are required' });
-        }
-        await clientDB.connect()
-        // Encuentra y actualiza el documento del usuario
-        const updatedUser = await clientDB.db("opawork").collection("user").findOne({ _id: new ObjectId(id) });
-        const knoledge = updatedUser ? updatedUser.knoledge : [];
-
-
-        // Verifica si se realizó una actualización
-        res.status(200).json({ success: 200, knoledge });
-    } catch (error) {
-        console.error('Error al eliminar el ítem:', error);
-    }
-});
-
 
 
 router.post("/api/update_contact_user/:id", cors(), async (req, res) => {
@@ -1667,110 +1313,9 @@ router.post("/api/update_personal_about", cors(), async (req, res) => {
         res.status(500).send(error.message);
     }
 });
-router.get("/api/postulations/:id", cors(), async (req, res) => {
-    /*     res.setHeader('Content-Type', 'application/json'); */
-    res.setHeader('Cache-Control', 's-max-age=1, stale-while-revalidate');
-    res.setHeader('Access-Control-Allow-Origin', /* 'https://opawork.vercel.app' */'http://localhost:3000');
-
-    try {
-        const { id } = req.params;
-        console.log(id);
-        if (!id) {
-            return res.status(400).json({ message: 'user_id is required' });
-        }
-        await clientDB.connect();
 
 
-        const applications = await clientDB.db("opawork").collection("application").aggregate([
-            {
-                $match: {
-                    user_id: new ObjectId(id) // Filtramos por el usuario ID
-                }
-            },
-            {
-                $lookup: {
-                    from: "job", // Nombre de la colección de aplicaciones
-                    localField: "job_id", // Campo en la colección de usuarios que contiene el array de ObjectId
-                    foreignField: "_id", // Campo en la colección de aplicaciones que coincide con los ObjectId
-                    as: "applicationDetails" // Nombre del array resultante
-                }
-            }/* ,
-            {
-                $lookup: {
-                    from: "job", // Nombre de la colección de trabajos
-                    localField: "applicationDetails.empleo_id", // Campo en la colección de aplicaciones
-                    foreignField: "_id", // Campo en la colección de trabajos
-                    as: "jobDetails" // Nombre del array resultante
-                }
-            } */,/* ,
-            {
-                $lookup: {
-                    from: "job", // Nombre de la colección de trabajos
-                    localField: "aplicaciones", // Campo en la colección de aplicaciones
-                    foreignField: "_id", // Campo en la colección de trabajos
-                    as: "jobDetails" // Nombre del array resultante
-                }
-            }, */
-            {
-                $unwind: "$applicationDetails" // Desenrollamos el array resultante para acceder a los detalles del trabajo
-            }
-        ]).toArray();
 
-        console.log(applications)
-        if (applications.length > 0) {
-            res.status(200).json(applications);
-            /*      clientDB.close(); */
-        } else {
-            res.status(404).json({ message: 'No se encontraron postulaciones para el usuario dado' });
-            /*     clientDB.close(); */
-        }
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: 'An error occurred while processing your request', error: error.message });
-        clientDB.close();
-    }
-    finally {
-        clientDB.close();
-    }
-});
-
-router.post("/api/postulate", async (req, res) => {
-    /*     res.setHeader('Content-Type', 'application/json'); */
-    res.setHeader('Cache-Control', 's-max-age=1, stale-while-revalidate');
-    res.setHeader('Access-Control-Allow-Origin', /* 'https://opawork.vercel.app' */'http://localhost:3000');
-    try {
-        const { jobId, userId, bussinesId } = req.body;
-        console.log(jobId, userId, bussinesId);
-        // Validar los datos de entrada
-        if (!jobId || !userId || !bussinesId) {
-            return res.status(400).json({ message: 'jobId, userId are required' });
-        }
-
-        // Agregar la postulación al trabajo (esto puede variar según tu modelo)
-        /*    await clientDB.db("opawork").collection("job").insertOne({ jobId: "jobId", userId: "userId" })
-    */
-        // Agregar la postulación al usuario (esto puede variar según tu modelo)
-        await clientDB.connect()
-        await clientDB.db("opawork").collection("application").insertOne({
-            user_id: new ObjectId(userId),
-            job_id: new ObjectId(jobId),
-            bussines_id: new ObjectId(bussinesId),
-            apply_date: new Date(),
-            apply_state: "En revision"
-        }).catch(error => {
-            console.error('Error inserting application:', error);
-        });
-
-        return res.status(200).json({
-            message: 'Se ha enviado la postulación con éxito!',
-            jobId,
-            userId
-        });
-    } catch (error) {
-        console.error(error);
-        return res.status(500).json({ message: 'An error occurred while processing your request', error: error.message });
-    }
-})
 router.post("/api/mark_user-view", async (req, res) => {
     /*     res.setHeader('Content-Type', 'application/json'); */
     res.setHeader('Cache-Control', 's-max-age=1, stale-while-revalidate');
@@ -1806,102 +1351,6 @@ router.post("/api/mark_user-view", async (req, res) => {
 
 
 
-
-router.post("/api/create_advise/:id", async (req, res) => {
-    /*     res.setHeader('Content-Type', 'application/json'); */
-    res.setHeader('Cache-Control', 's-max-age=1, stale-while-revalidate');
-    res.setHeader('Access-Control-Allow-Origin', /* 'https://opawork.vercel.app' */'https://localhost:3000');
-    try {
-        const { id } = req.params; // Corregir la desestructuración de params
-        const { title, description, street, type, salary, experience, requirements, benefits, typeTime, company, sector,
-            email, contactLinkedIn, contactPhone, department, country, location } = req.body;
-
-        // Verificar que todos los campos obligatorios están presentes
-        /*    if (!title || !description || !location || !type || !salary || !experience || !requirements || !user_id) {
-               return res.status(400).json({ message: 'Todos los campos son obligatorios' });
-           } */
-
-        await clientDB.connect();
-
-        // Verificar que el usuario existe
-        const bussinesUser = await clientDB.db("opawork").collection("user").findOne({ _id: new ObjectId(id) });
-        if (!bussinesUser) {
-            return res.status(404).json({ message: 'Usuario no encontrado' });
-        }
-
-
-        const newAdvise = {
-            title: title,
-            description: description,
-            street: street,
-            department: department,
-            country: country,
-            company: bussinesUser.contact_info.Email,
-            user_id: new ObjectId(id),
-            requirements: requirements,
-            benefits: benefits,
-            sector: sector,
-            modJob: [
-                {
-                    "nombre": "Salario",
-                    "data": `${salary}`
-                },
-                {
-                    "nombre": "Experiencia",
-                    "data": `${experience} años`
-                },
-                {
-                    "nombre": "Ubicación",
-                    "data": location
-                },
-                {
-                    "nombre": "Tipo de trabajo",
-                    "data": type
-                },
-                {
-                    "nombre": "Horarios",
-                    "data": typeTime
-                }
-            ],
-            email: email,
-            contactLinkedIn: contactLinkedIn,
-            contactPhone: contactPhone,
-            status_advise: "Activo",
-            postedDate: new Date(),
-        };
-        console.log(newAdvise)
-        const result = await clientDB.db("opawork").collection("job").insertOne(newAdvise);
-        if (result.acknowledged) {
-
-
-            const relatedUsers = await clientDB.db("opawork").collection("user").find({
-                // Asume que tienes un campo o lógica que te permite encontrar usuarios relacionados
-                sector: { $regex: sector, $options: 'i' }
-            }).toArray();
-
-            relatedUsers.forEach(user => {
-
-                const mailOptions = {
-                    from: 'opaawork@gmail.com',
-                    to: user.email,
-                    subject: `¡Nuevo anuncio! ${title}`,
-                    text: `Hola ${user.nombre},\n\n ${company} ha publicado un nuevo anuncio que podría interesarte: ${title}.\n\nDescripción: ${description}\n\nSaludos,\nEl equipo de Opawork`
-                };
-                send(mailOptions);
-            });
-
-
-            console.log(result);
-            res.status(201).json({ message: 'Anuncio creado exitosamente' });
-
-        }
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: 'An error occurred while processing your request', error: error.message });
-    } finally {
-        clientDB.close();
-    }
-})
 
 
 
@@ -2082,91 +1531,804 @@ router.post('/api/register_account_with_google', cors(), async (req, res) => {
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-router.post("/api/all_advises_bussines/:id", async (req, res) => {
+router.post("/api/user_sells/:id", cors(), async (req, res) => {
     res.setHeader('Content-Type', 'application/json');
     res.setHeader('Cache-Control', 's-max-age=1, stale-while-revalidate');
-    res.setHeader('Access-Control-Allow-Origin', /* 'https://opawork.vercel.app' */'http://localhost:3000');
+    res.setHeader('Access-Control-Allow-Origin', ALLOWED_ORIGIN);
+    res.setHeader('Access-Control-Allow-Credentials', "true");
+
+
+    const { id } = req.params;
+
+    // Verifica si el ID fue proporcionado
+    if (!id) {
+        return res.status(400).json({ success: 400, message: 'ID is required' });
+    }
+
+    // Si el id debería ser un ObjectId, realiza la conversión
+    /*     const userId = new ObjectId(id); */
+
+    console.log("User ID: " + id);
+
     try {
-        const { id } = req.params;
-        if (!id) {
-            return res.status(400).json({ message: 'user_id is required' });
-        }
         await clientDB.connect();
 
-        console.log(id)
-        const jobs = await clientDB.db("opawork").collection("user").aggregate([
+        // Realiza el aggregate para encontrar las compras del usuario
+        const products = await clientDB.db("mercado").collection("order").aggregate([
             {
+                // Despliega los documentos que tienen un 'cart' con al menos un elemento
                 $match: {
-                    _id: new ObjectId(id) // Filtramos por el ID del usuario del negocio
-                }
-            },
-            {
-                $lookup: {
-                    from: "job", // Nombre de la colección de trabajos
-                    localField: "_id", // Campo en la colección de usuarios que coincide con el ObjectId
-                    foreignField: "user_id", // Campo en la colección de trabajos que coincide con el ObjectId del usuario
-                    as: "jobs" // Nombre del array resultante
+                    "cart.user_product": new ObjectId(id),
                 }
             }
         ]).toArray();
 
+        console.log("Products found: ", products);
 
-
-        console.log(jobs)
-        if (jobs.length > 0) {
-            res.status(200).json(jobs);
-            /*      clientDB.close(); */
+        if (products.length > 0) {
+            return res.status(200).json({ data: products });
         } else {
-            res.status(404).json({ message: 'No se encontraron avisos para el usuario dado' });
-            /*     clientDB.close(); */
+            return res.status(404).json({ message: "No purchases found for the user" });
         }
+    } catch (error) {
+        console.error('Error al obtener los items:', error);
+        res.status(500).json({ message: 'Internal server error' });
+    }
+});
+
+
+
+
+
+
+router.post("/api/user_purchases/:id", cors(), async (req, res) => {
+    res.setHeader('Content-Type', 'application/json');
+    res.setHeader('Cache-Control', 's-max-age=1, stale-while-revalidate');
+    res.setHeader('Access-Control-Allow-Origin', ALLOWED_ORIGIN);
+    res.setHeader('Access-Control-Allow-Credentials', "true");
+
+
+    const { id } = req.params;
+
+    // Verifica si el ID fue proporcionado
+    if (!id) {
+        return res.status(400).json({ success: 400, message: 'ID is required' });
+    }
+
+    // Si el id debería ser un ObjectId, realiza la conversión
+    /*     const userId = new ObjectId(id); */
+
+    console.log("User ID: " + id);
+
+    try {
+        await clientDB.connect();
+
+        // Realiza el aggregate para encontrar las compras del usuario
+        const products = await clientDB.db("mercado").collection("order").aggregate([
+            {
+                // Despliega los documentos que tienen un 'cart' con al menos un elemento
+                $match: {
+                    "cart.userId": new ObjectId(id),
+                }
+            }
+        ]).toArray();
+
+        console.log("Products found: ", products);
+
+        if (products.length > 0) {
+            return res.status(200).json({ data: products });
+        } else {
+            return res.status(404).json({ message: "No purchases found for the user" });
+        }
+    } catch (error) {
+        console.error('Error al obtener los items:', error);
+        res.status(500).json({ message: 'Internal server error' });
+    }
+});
+
+
+
+router.post("/api/users/chat/:id", cors(), async (req, res) => {
+    res.setHeader('Content-Type', 'application/json');
+    res.setHeader('Cache-Control', 's-max-age=1, stale-while-revalidate');
+    res.setHeader('Access-Control-Allow-Origin', ALLOWED_ORIGIN);
+    res.setHeader('Access-Control-Allow-Credentials', "true");
+
+
+    const { id } = req.params;
+
+    // Verifica si el ID fue proporcionado
+    if (!id) {
+        return res.status(400).json({ success: 400, message: 'ID is required' });
+    }
+
+    // Si el id debería ser un ObjectId, realiza la conversión
+    /*     const userId = new ObjectId(id); */
+
+    console.log("User seller ID: " + id);
+
+    try {
+        await clientDB.connect();
+
+        // Realiza el aggregate para encontrar las compras del usuario
+        const conversation = await clientDB.db("mercado").collection("chat").aggregate([
+            {
+                // Despliega los documentos que tienen un 'cart' con al menos un elemento
+                $match: {
+                    "orderId": id
+                }
+            }
+        ]).toArray();
+
+        console.log("Conversation found: ", conversation);
+
+        if (conversation) {
+            res.status(200).json({ data: conversation });
+        } else {
+            res.status(404).json({ message: "No purchases found for the user" });
+        }
+    } catch (error) {
+        console.error('Error al obtener los items:', error);
+        res.status(500).json({ message: 'Internal server error' });
+    }
+});
+
+
+router.post('/api/users/chat/:orderId/send/id_seller/:id_seller', cors(), async (req, res) => {
+    res.setHeader('Content-Type', 'application/json');
+    res.setHeader('Cache-Control', 's-max-age=1, stale-while-revalidate');
+    res.setHeader('Access-Control-Allow-Origin', ALLOWED_ORIGIN);
+    res.setHeader('Access-Control-Allow-Credentials', "true");
+
+    const { orderId, id_seller } = req.params;  // Obtener parámetros de la URL
+    const { newMsg } = req.body;  // Obtener el mensaje del cuerpo de la petición
+
+    // Validar los datos recibidos
+    if (!orderId || !id_seller || !newMsg || !newMsg.sender || !newMsg.content || !newMsg.timestamp) {
+        return res.status(400).json({ error: 'Datos incompletos o incorrectos.' });
+    }
+
+    // Estructura del mensaje a guardar en la base de datos
+    const newMessage = {
+        orderId: orderId,
+        id_seller: new ObjectId(id_seller),  // Agregar id_seller para tener claridad en el registro
+        sender: new ObjectId(newMsg.sender),
+        content: newMsg.content,
+        timestamp: newMsg.timestamp,
+    };
+
+    try {
+        // Guardar el mensaje en la base de datos
+        await clientDB.db("mercado").collection('chat').insertOne(newMessage);
+        return res.status(200).json({ message: 'Mensaje guardado correctamente' });
+    } catch (error) {
+        console.error('Error al guardar el mensaje:', error);
+        return res.status(500).json({ error: 'Error al guardar el mensaje' });
+    }
+});
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+router.post("/api/purchase_detail_order/:id", cors(), async (req, res) => {
+    res.setHeader('Content-Type', 'application/json');
+    res.setHeader('Cache-Control', 's-max-age=1, stale-while-revalidate');
+    res.setHeader('Access-Control-Allow-Origin', ALLOWED_ORIGIN);
+    res.setHeader('Access-Control-Allow-Credentials', "true");
+
+
+    const { id } = req.params;
+
+    // Verifica si el ID fue proporcionado
+    if (!id) {
+        return res.status(400).json({ success: 400, message: 'ID is required' });
+    }
+
+    // Si el id debería ser un ObjectId, realiza la conversión
+    /*     const userId = new ObjectId(id); */
+
+    console.log("Uid de orden: " + id);
+
+    try {
+        await clientDB.connect();
+
+        // Realiza el aggregate para encontrar las compras del usuario
+        const order_detail = await clientDB.db("mercado").collection("order").aggregate([
+            {
+                // Filtramos la orden por su _id
+                $match: {
+                    _id: new ObjectId(id),
+                },
+            },
+            /*       {
+                 
+                      $unwind: "$cart"
+                  }, */
+            {
+                // Realizamos el $lookup para obtener detalles del vendedor desde la colección 'user'
+                $lookup: {
+                    from: "user",
+                    localField: "cart.user_product", // Referencia al usuario del producto
+                    foreignField: "_id", // Campo en 'user' que será comparado (el '_id' de usuario)
+                    as: "user_product" // El resultado del lookup será almacenado en 'user_product'
+                }
+            },
+
+            /*       {
+                      // Volvemos a agrupar el carrito y los datos de la orden
+                      $group: {
+                          _id: "$id",
+                          cart: { $push: { product: "$cart", seller: "$user_product" } }, // Reagrupar los productos y los datos del vendedor
+                  
+                         
+                      }
+                  } */
+        ]).toArray();
+
+
+        console.log("Orden: ", order_detail);
+
+        if (order_detail) {
+            res.status(200).json({ data: order_detail });
+        } else {
+            res.status(404).json({ message: "No purchases found for the user" });
+        }
+    } catch (error) {
+        console.error('Error al obtener los items:', error);
+        res.status(500).json({ message: 'Internal server error' });
+    }
+});
+
+router.post("/api/sell_detail_order/:id", cors(), async (req, res) => {
+    res.setHeader('Content-Type', 'application/json');
+    res.setHeader('Cache-Control', 's-max-age=1, stale-while-revalidate');
+    res.setHeader('Access-Control-Allow-Origin', ALLOWED_ORIGIN);
+    res.setHeader('Access-Control-Allow-Credentials', "true");
+
+
+    const { id } = req.params;
+
+    // Verifica si el ID fue proporcionado
+    if (!id) {
+        return res.status(400).json({ success: 400, message: 'ID is required' });
+    }
+
+    // Si el id debería ser un ObjectId, realiza la conversión
+    /*     const userId = new ObjectId(id); */
+
+    console.log("Uid de orden: " + id);
+
+    try {
+        await clientDB.connect();
+
+        // Realiza el aggregate para encontrar las compras del usuario
+        const order_detail = await clientDB.db("mercado").collection("order").aggregate([
+            {
+                // Filtramos la orden por su _id
+                $match: {
+                    _id: new ObjectId(id),
+                },
+            },
+            /*       {
+                 
+                      $unwind: "$cart"
+                  }, */
+            {
+                // Realizamos el $lookup para obtener detalles del vendedor desde la colección 'user'
+                $lookup: {
+                    from: "user",
+                    localField: "cart.userId", // Referencia al usuario del producto
+                    foreignField: "_id", // Campo en 'user' que será comparado (el '_id' de usuario)
+                    as: "userId" // El resultado del lookup será almacenado en 'user_product'
+                }
+            },
+
+            /*       {
+                      // Volvemos a agrupar el carrito y los datos de la orden
+                      $group: {
+                          _id: "$id",
+                          cart: { $push: { product: "$cart", seller: "$user_product" } }, // Reagrupar los productos y los datos del vendedor
+                  
+                         
+                      }
+                  } */
+        ]).toArray();
+
+
+        console.log("Orden: ", order_detail);
+
+        if (order_detail) {
+            res.status(200).json({ data: order_detail });
+        } else {
+            res.status(404).json({ message: "No purchases found for the user" });
+        }
+    } catch (error) {
+        console.error('Error al obtener los items:', error);
+        res.status(500).json({ message: 'Internal server error' });
+    }
+});
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+const generateAccessToken = async () => {
+    try {
+        if (!PAYPAL_CLIENT_ID || !PAYPAL_CLIENT_SECRET) {
+            throw new Error("MISSING_API_CREDENTIALS");
+        }
+        const auth = Buffer.from(
+            PAYPAL_CLIENT_ID + ":" + PAYPAL_CLIENT_SECRET,
+        ).toString("base64");
+        const response = await fetch(`${base}/v1/oauth2/token`, {
+            method: "POST",
+            body: "grant_type=client_credentials",
+            headers: {
+                Authorization: `Basic ${auth}`,
+            },
+        });
+
+        const data = await response.json();
+        return data.access_token;
+    } catch (error) {
+        console.error("Failed to generate Access Token:", error);
+    }
+};
+
+/**
+ * Generate a client token for rendering the hosted card fields.
+ * @see https://developer.paypal.com/docs/checkout/advanced/integrate/#link-integratebackend
+ */
+const generateClientToken = async () => {
+    const accessToken = await generateAccessToken();
+    const url = `${base}/v1/identity/generate-token`;
+    const response = await fetch(url, {
+        method: "POST",
+        headers: {
+            Authorization: `Bearer ${accessToken}`,
+            "Accept-Language": "en_US",
+            "Content-Type": "application/json",
+        },
+    });
+
+    return handleResponse(response);
+};
+
+/**
+ * Create an order to start the transaction.
+ * @see https://developer.paypal.com/docs/api/orders/v2/#orders_create
+ */
+const createOrder = async (cart) => {
+    // use the cart information passed from the front-end to calculate the purchase unit details
+    console.log(
+        "shopping cart information passed from the frontend createOrder() callback:",
+        cart
+    );
+
+    const accessToken = await generateAccessToken();
+    const url = `${base}/v2/checkout/orders`;
+
+    // Calcular el total del carrito
+    const subtotal = cart.reduce((acc, item) => acc + item.price * item.quantity, 0);
+    const commission = subtotal * 0.05; // 5% de comisión
+    const totalWithCommission = subtotal + commission;
+
+    const payload = {
+        intent: "CAPTURE",
+
+        purchase_units: [
+            {
+                amount: {
+                    currency_code: "USD",
+                    value: totalWithCommission, // Total con la comisión incluida
+                    breakdown: {
+                        item_total: {
+                            currency_code: "USD",
+                            value: subtotal, // Subtotal de los productos (sin la comisión)
+                        },
+                        handling: {
+                            currency_code: "USD",
+                            value: commission, // Comisión del 5%
+                        },
+                    },
+                },
+                items: cart.map((item) => ({
+                    name: item.name,
+                    unit_amount: {
+                        currency_code: "USD",
+                        value: item.price, // Precio por unidad
+                    },
+                    quantity: item.quantity, // Cantidad
+                })),
+            },
+        ],
+    };
+
+    // Hacer la petición a PayPal con el payload dinámico
+    const response = await fetch(url, {
+        headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${accessToken}`,
+            // "PayPal-Mock-Response": '{"mock_application_codes": "MISSING_REQUIRED_PARAMETER"}'
+            // "PayPal-Mock-Response": '{"mock_application_codes": "PERMISSION_DENIED"}'
+            // "PayPal-Mock-Response": '{"mock_application_codes": "INTERNAL_SERVER_ERROR"}'
+        },
+        method: "POST",
+        body: JSON.stringify(payload),
+    });
+
+    return handleResponse(response);
+};
+
+/**
+ * Capture payment for the created order to complete the transaction.
+ * @see https://developer.paypal.com/docs/api/orders/v2/#orders_capture
+ */
+const captureOrder = async (orderID) => {
+    const accessToken = await generateAccessToken();
+    const url = `${base}/v2/checkout/orders/${orderID}/capture`;
+
+    const response = await fetch(url, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${accessToken}`,
+            // Uncomment one of these to force an error for negative testing (in sandbox mode only). Documentation:
+            // https://developer.paypal.com/tools/sandbox/negative-testing/request-headers/
+            // "PayPal-Mock-Response": '{"mock_application_codes": "INSTRUMENT_DECLINED"}'
+            // "PayPal-Mock-Response": '{"mock_application_codes": "TRANSACTION_REFUSED"}'
+            // "PayPal-Mock-Response": '{"mock_application_codes": "INTERNAL_SERVER_ERROR"}'
+        },
+    });
+
+    return handleResponse(response);
+};
+
+async function handleResponse(response) {
+    try {
+        const jsonResponse = await response.json();
+        return {
+            jsonResponse,
+            httpStatusCode: response.status,
+        };
+    } catch (err) {
+        const errorMessage = await response.text();
+        throw new Error(errorMessage);
+    }
+}
+router.post("/api/token", async (req, res) => {
+    try {
+        const { jsonResponse, httpStatusCode } = await generateClientToken();
+        res.status(httpStatusCode).json(jsonResponse);
+    } catch (error) {
+        console.error("Failed to generate client token:", error);
+        res.status(500).send({ error: "Failed to generate client token." });
+    }
+});
+
+router.post("/api/orders", async (req, res) => {
+    try {
+        // use the cart information passed from the front-end to calculate the order amount detals
+        const { cart } = req.body;
+        const { jsonResponse, httpStatusCode } = await createOrder(cart);
+
+        res.status(httpStatusCode).json(jsonResponse);
+    } catch (error) {
+        console.error("Failed to create order:", error);
+        res.status(500).json({ error: "Failed to create order." });
+    }
+});
+
+router.post("/api/orders/:orderID/capture", async (req, res) => {
+    try {
+        const { orderID } = req.params;
+
+        const { jsonResponse, httpStatusCode } = await captureOrder(orderID);
+
+        await clientDB.connect()
+
+        // Save payment data to MongoDB
+        const orderData = await savePaymentToDB(jsonResponse);
+        if (orderData) {
+            await clientDB.db("mercado").collection("order").insertOne(orderData);
+            res.status(httpStatusCode).json(jsonResponse);
+        }
+    } catch (error) {
+        console.error("Failed to create order:", error);
+        res.status(500).json({ error: "Failed to capture order." });
+    }
+});
+router.post("/api/orders/save_products/:id", async (req, res) => {
+    try {
+        const { id } = req.params; // Este es el ID del usuario
+        const { cart } = req.body; // El carrito que llega desde el front-end
+
+        await clientDB.connect();
+
+        // Busca la orden en la base de datos por el id del usuario
+        const orderFromDB = await clientDB.db("mercado").collection("order").findOne({ paymentId: id });
+
+        if (!orderFromDB) {
+            return res.status(404).json({ error: "Order not found for this user" });
+        }
+        const updatedCart = cart.map((item) => {
+            return {
+                ...item,
+                userId: new ObjectId(item.userId), // Convertir userId a ObjectId
+                user_product: new ObjectId(item.user_product) // Convertir product_user a ObjectId
+            };
+        });
+        // Incluye el carrito en el jsonResponse
+        const jsonResponse = {
+            ...orderFromDB,
+            cart: updatedCart // Sobrescribe o añade el carrito al jsonResponse existente
+        };
+
+        // Guarda los datos en MongoDB
+        /*     const orderData = await savePaymentToDB(jsonResponse); */
+        if (jsonResponse) {
+            // Actualiza la orden en la base de datos
+            await clientDB.db("mercado").collection("order").updateOne(
+                { paymentId: id }, // Asegúrate de que se busca por el ID del usuario
+                { $set: jsonResponse } // Actualiza los datos de la orden con el carrito
+            );
+
+            res.status(200).json({ message: "Order and products saved successfully", data: orderData });
+        } else {
+            res.status(500).json({ error: "Failed to save order data." });
+        }
+    } catch (error) {
+        console.error("Failed to save products:", error);
+        res.status(500).json({ error: "Failed to save products." });
+    }
+});
+
+
+const savePaymentToDB = async (jsonResponse) => {
+    try {
+        const paymentData = {
+            paymentId: jsonResponse.id,  // Aquí usamos el ID de la orden
+            status: jsonResponse.status,
+
+            payer: {
+                name: {
+                    given_name: jsonResponse.payer.name.given_name,
+                    surname: jsonResponse.payer.name.surname,
+                },
+                email_address: jsonResponse.payer.email_address,
+                payer_id: jsonResponse.payer.payer_id,
+                country_code: jsonResponse.payer.address.country_code,
+            },
+            payment_source: {
+                paypal: {
+                    email_address: jsonResponse.payment_source.paypal.email_address,
+                    account_id: jsonResponse.payment_source.paypal.account_id,
+                    account_status: jsonResponse.payment_source.paypal.account_status,
+                    name: {
+                        given_name: jsonResponse.payment_source.paypal.name.given_name,
+                        surname: jsonResponse.payment_source.paypal.name.surname,
+                    },
+                    country_code: jsonResponse.payment_source.paypal.address.country_code,
+                },
+            },
+            amount: {
+                currency_code: jsonResponse.purchase_units[0].payments.captures[0].amount.currency_code,
+                value: jsonResponse.purchase_units[0].payments.captures[0].amount.value,
+            },
+            shipping: {
+                name: jsonResponse.purchase_units[0].shipping.name.full_name,
+                address: {
+                    address_line_1: jsonResponse.purchase_units[0].shipping.address.address_line_1,
+                    admin_area_1: jsonResponse.purchase_units[0].shipping.address.admin_area_1,
+                    admin_area_2: jsonResponse.purchase_units[0].shipping.address.admin_area_2,
+                    postal_code: jsonResponse.purchase_units[0].shipping.address.postal_code,
+                    country_code: jsonResponse.purchase_units[0].shipping.address.country_code,
+                },
+            },
+            paypal_fee: {
+                currency_code: jsonResponse.purchase_units[0].payments.captures[0].seller_receivable_breakdown.paypal_fee.currency_code,
+                value: jsonResponse.purchase_units[0].payments.captures[0].seller_receivable_breakdown.paypal_fee.value,
+            },
+            net_amount: {
+                currency_code: jsonResponse.purchase_units[0].payments.captures[0].seller_receivable_breakdown.net_amount.currency_code,
+                value: jsonResponse.purchase_units[0].payments.captures[0].seller_receivable_breakdown.net_amount.value,
+            },
+            capture_id: jsonResponse.purchase_units[0].payments.captures[0].id,
+            create_time: jsonResponse.purchase_units[0].payments.captures[0].create_time,
+            update_time: jsonResponse.purchase_units[0].payments.captures[0].update_time,
+        };
+        return paymentData;
+    } catch (error) {
+        console.error("Failed to save payment to DB:", error);
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+router.post('/api/create_subscription', cors(), async (req, res) => {
+    res.setHeader('Content-Type', 'application/json');
+    res.setHeader('Cache-Control', 's-max-age=1, stale-while-revalidate');
+    res.setHeader('Access-Control-Allow-Origin', ALLOWED_ORIGIN);
+    res.setHeader('Access-Control-Allow-Credentials', "true");
+
+    const { planId, price } = req.body; // Datos del plan
+    console.log(planId,price)
+    if (!planId || !price) {
+        return res.status(400).json({ error: 'Plan name and price are required' });
+    }
+
+    const paypal = new PayPalClient();
+
+    try {
+        // Paso 1: Crear el producto
+        const product = await paypal.createProduct(planId, `Descripción para el plan ${planId}`);
+
+        // Paso 2: Crear el plan de suscripción asociado al producto
+        const plan = await paypal.createPlan(product.id, planId, price);
+
+        // Paso 3: Crear la suscripción utilizando el ID del plan recién creado
+        const subscription = await paypal.createSubscription(plan.id);
+
+        // Paso 4: Obtener el link de aprobación
+        console.log(subscription)
+        const approvalLink = subscription.links.find(link => link.rel === 'approve').href;
+        
+        return res.status(200).json({
+            success: true,
+            approval_url: approvalLink
+        });
 
     } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: 'An error occurred while processing your request', error: error.message });
-        clientDB.close();
+        console.error('Error creating subscription:', error.message);
+        res.status(500).json({
+            error: 'Internal server error while creating PayPal subscription',
+            details: error.message
+        });
     }
-    finally {
-        clientDB.close();
+});
+
+
+
+
+router.post('/api/paypal-webhook', async (req, res) => {
+    const body = req.body;
+
+    // Verificar la autenticidad del webhook (opcional pero recomendado)
+    // Puedes usar el SDK de PayPal para verificar el evento
+
+    // Manejar diferentes tipos de eventos
+    if (body.event_type === 'BILLING.SUBSCRIPTION.ACTIVATED') {
+        // Obtener la información relevante de la suscripción
+        const subscriptionId = body.resource.id; // El ID de la suscripción activada
+        const userEmail = body.resource.subscriber.email_address; // Email del usuario (si es relevante)
+        const planId = body.resource.plan_id; // El ID del plan asociado a la suscripción
+        
+        // Aquí puedes guardar esta información en tu base de datos o realizar acciones adicionales
+        console.log(`Suscripción activada para el plan ${planId} y usuario ${userEmail}`);
+
+        // Responder a PayPal que el webhook fue recibido correctamente
+        res.status(200).send('Webhook recibido correctamente');
+    } else if (body.event_type === 'PAYMENT.SALE.COMPLETED') {
+        // Puedes manejar otros eventos, como el pago completado
+        console.log(`Pago completado para la suscripción ${body.resource.billing_agreement_id}`);
+        res.status(200).send('Pago completado');
+    } else {
+        // Manejar otros tipos de eventos que te interesen
+        res.status(200).send('Evento no relevante');
     }
-})
-
-
-
-
-
-
-
-
-
-
-
-
-
+});
 
 
 export default router

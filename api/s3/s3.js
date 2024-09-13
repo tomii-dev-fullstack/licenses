@@ -1,4 +1,4 @@
-import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
+import { S3Client, PutObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
 import fs from 'fs';
 import dotenv from 'dotenv';
 
@@ -30,6 +30,25 @@ export const uploadFileToS3 = async (file,user, product) => {
             ACL: 'public-read',
         };
         const command = new PutObjectCommand(uploadParams);
+        const result = await client.send(command);
+        console.log('Archivo subido:', result);
+        return result;
+    } catch (error) {
+        console.error('Error al subir archivo:', error);
+        throw error;
+    }
+};
+export const deleteFileFromS3 = async (file,user, product) => {
+    try {
+        console.log(file);
+        const stream = fs.createReadStream(file.path);
+        const uploadParams = {
+            Bucket: AWS_BUCKET_NAME,
+            Key: `${user}/${product}/${file.originalname}`,
+            Body: stream,
+            ACL: 'public-read',
+        };
+        const command = new DeleteObjectCommand(uploadParams);
         const result = await client.send(command);
         console.log('Archivo subido:', result);
         return result;
