@@ -8,11 +8,11 @@ class PayPalClient {
         this.baseUri = 'https://api-m.sandbox.paypal.com'; // Cambia esto según el entorno
         this.accessToken = null;
     }
-
     async getAccessToken() {
         if (this.accessToken) {
             return this.accessToken;
         }
+        console.log(this.clientId, this.secret)
         try {
             const response = await axios.post(`${this.baseUri}/v1/oauth2/token`,
                 'grant_type=client_credentials',
