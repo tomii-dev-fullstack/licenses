@@ -150,7 +150,7 @@ class PayPalClient {
                     application_context: {
                         brand_name: "chetiendas",
                         user_action: "SUBSCRIBE_NOW",
-                        return_url: `${ALLOWED_ORIGIN}/`,
+                        return_url: `${ALLOWED_ORIGIN}/planes_de_pago`,
                         cancel_url: `${ALLOWED_ORIGIN}/`,
                     }
                 },
@@ -163,6 +163,12 @@ class PayPalClient {
             throw error;
         }
     }
+
+
+
+   
+
+
 
     async getPlans() {
         await this.getAccessToken();

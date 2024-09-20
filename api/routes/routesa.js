@@ -375,6 +375,63 @@ router.get("/", async (req, res) => {
 
 
 
+router.get("/api/user_store/:id",cors(), async (req, res) => {
+    // Definir las cabeceras
+    res.setHeader('Content-Type', 'application/json');
+    res.setHeader('Cache-Control', 's-max-age=1, stale-while-revalidate');
+    res.setHeader('Access-Control-Allow-Origin', ALLOWED_ORIGIN);  // Usar una constante o variable de entorno para el origen permitido
+
+
+    try {
+        const { id } = req.params;
+
+        // Verificar que se haya proporcionado un ID
+        if (!id) {
+            return res.status(400).json({ message: 'Se requiere el ID del usuario.' });
+        }
+
+        // Conectar a la base de datos
+        await clientDB.connect();
+
+        // Ejecutar la consulta con agregaciones
+        const data = await clientDB.db("mercado").collection("user").aggregate([
+            {
+                $match: {
+                    _id: new ObjectId(id),  // Buscar al usuario por ID
+                }
+            },
+            {
+                $lookup: {
+                    from: "product",  // Conectar con la colección de productos
+                    localField: "_id",  // El campo en la colección de usuario
+                    foreignField: "user_id",  // El campo en la colección de productos que referencia al usuario
+                    as: "product_details"  // Los productos se almacenan en el campo `product_details`
+                }
+            }
+        ]).toArray();
+
+        // Verificar si hay datos y enviar la respuesta
+        if (data.length > 0) {
+            await clientDB.close();
+            return res.status(200).json({ data: data });
+        } else {
+            await clientDB.close();
+            // Si no hay productos, devolver 404 (no encontrado)
+            return res.status(404).json({ message: "No se encontraron productos para este usuario." });
+        }
+
+    } catch (error) {
+        // Manejar los errores y enviar un mensaje de error con código 500
+        console.error('Error:', error);
+        return res.status(500).json({
+            message: 'Ocurrió un error procesando tu solicitud.',
+            error: error.message
+        });
+    }
+});
+
+
+
 
 
 
@@ -383,11 +440,11 @@ router.get("/api/own_store/:id", async (req, res) => {
     res.setHeader('Content-Type', 'application/json');
     res.setHeader('Cache-Control', 's-max-age=1, stale-while-revalidate');
     res.setHeader('Access-Control-Allow-Origin', ALLOWED_ORIGIN);  // Usar una constante o variable de entorno para el origen permitido
-    res.setHeader('Access-Control-Allow-Credentials', "true");
-
+   /*  res.setHeader('Access-Control-Allow-Credentials', "true");
+ */
     try {
         const { id } = req.params;
-
+        console.log(id)
         // Verificar que se haya proporcionado un ID
         if (!id) {
             return res.status(400).json({ message: 'Se requiere el ID del usuario.' });
@@ -597,6 +654,7 @@ router.get('/api/check-auth', cors(), (req, res) => {
             user: {
                 id: decoded.id,
                 email: decoded.email,
+                published_products: decoded.published_products
             }
         });
     } catch (error) {
@@ -610,7 +668,7 @@ router.post('/api/logout', (req, res) => {
     // Elimina la cookie de sesión
     res.clearCookie('sessionToken', {
         httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
+        secure: true,
         sameSite: 'strict'// pasar a otro val en prod
     });
 
@@ -660,6 +718,7 @@ router.post("/api/login_with_google", cors(), async (req, res) => {
             {
                 id: user._id,
                 email: user.email,
+                published_products: user.published_products
 
                 /*      nombre: user.nombre, */
                 // Puedes agregar más datos aquí si es necesario
@@ -675,7 +734,7 @@ router.post("/api/login_with_google", cors(), async (req, res) => {
             httpOnly: true,
 
             /*      domain:"https://olamercado.vercel.app", */
-            secure: process.env.NODE_ENV === 'production', // Solo en HTTPS en producción
+            secure: true, // Solo en HTTPS en producción
             sameSite: 'strict', // cambiar a None en produccion
             maxAge: 24 * 60 * 60 * 1000 // 1 día de vida útil
         });
@@ -2085,13 +2144,14 @@ router.post("/api/orders", async (req, res) => {
 router.post("/api/orders/:orderID/capture", async (req, res) => {
     try {
         const { orderID } = req.params;
-
+        const sessionToken = req.cookies["sessionToken"];
         const { jsonResponse, httpStatusCode } = await captureOrder(orderID);
 
-        await clientDB.connect()
+        let decoded = jwt.verify(sessionToken, process.env.JWT_SECRET); // Verifica el token
 
+        await clientDB.connect()
         // Save payment data to MongoDB
-        const orderData = await savePaymentToDB(jsonResponse);
+        const orderData = await savePaymentToDB(jsonResponse, decoded);
         if (orderData) {
             await clientDB.db("mercado").collection("order").insertOne(orderData);
             res.status(httpStatusCode).json(jsonResponse);
@@ -2114,21 +2174,31 @@ router.post("/api/orders/save_products/:id", async (req, res) => {
         if (!orderFromDB) {
             return res.status(404).json({ error: "Order not found for this user" });
         }
+
+        // Actualiza el stock de los productos en la colección `product`
+        for (const item of cart) {
+            await clientDB.db("mercado").collection("product").updateOne(
+                { _id: new ObjectId(item.id) }, // Busca el producto por su ID
+                { $inc: { stock: -1 } } // Resta 1 al stock del producto
+            );
+        }
+
+        // Actualiza el carrito con la nueva información
         const updatedCart = cart.map((item) => {
             return {
                 ...item,
                 userId: new ObjectId(item.userId), // Convertir userId a ObjectId
-                user_product: new ObjectId(item.user_product) // Convertir product_user a ObjectId
+                user_product: new ObjectId(item.user_product) // Convertir user_product a ObjectId
             };
         });
-        // Incluye el carrito en el jsonResponse
+
+        // Incluye el carrito actualizado en el jsonResponse
         const jsonResponse = {
             ...orderFromDB,
             cart: updatedCart // Sobrescribe o añade el carrito al jsonResponse existente
         };
 
         // Guarda los datos en MongoDB
-        /*     const orderData = await savePaymentToDB(jsonResponse); */
         if (jsonResponse) {
             // Actualiza la orden en la base de datos
             await clientDB.db("mercado").collection("order").updateOne(
@@ -2136,7 +2206,7 @@ router.post("/api/orders/save_products/:id", async (req, res) => {
                 { $set: jsonResponse } // Actualiza los datos de la orden con el carrito
             );
 
-            res.status(200).json({ message: "Order and products saved successfully", data: orderData });
+            res.status(200).json({ message: "Order and products saved successfully", data: jsonResponse });
         } else {
             res.status(500).json({ error: "Failed to save order data." });
         }
@@ -2147,7 +2217,7 @@ router.post("/api/orders/save_products/:id", async (req, res) => {
 });
 
 
-const savePaymentToDB = async (jsonResponse) => {
+const savePaymentToDB = async (jsonResponse, decoded) => {
     try {
         const paymentData = {
             paymentId: jsonResponse.id,  // Aquí usamos el ID de la orden
@@ -2158,8 +2228,8 @@ const savePaymentToDB = async (jsonResponse) => {
                     given_name: jsonResponse.payer.name.given_name,
                     surname: jsonResponse.payer.name.surname,
                 },
-                email_address: jsonResponse.payer.email_address,
-                payer_id: jsonResponse.payer.payer_id,
+                email_address: decoded.email,
+                payer_id: new ObjectId(decoded.id),
                 country_code: jsonResponse.payer.address.country_code,
             },
             payment_source: {
@@ -2245,18 +2315,6 @@ const savePaymentToDB = async (jsonResponse) => {
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
 router.post('/api/create_subscription', cors(), async (req, res) => {
     res.setHeader('Content-Type', 'application/json');
     res.setHeader('Cache-Control', 's-max-age=1, stale-while-revalidate');
@@ -2264,7 +2322,7 @@ router.post('/api/create_subscription', cors(), async (req, res) => {
     res.setHeader('Access-Control-Allow-Credentials', "true");
 
     const { planId, price } = req.body; // Datos del plan
-    console.log(planId,price)
+    console.log(planId, price)
     if (!planId || !price) {
         return res.status(400).json({ error: 'Plan name and price are required' });
     }
@@ -2284,7 +2342,7 @@ router.post('/api/create_subscription', cors(), async (req, res) => {
         // Paso 4: Obtener el link de aprobación
         console.log(subscription)
         const approvalLink = subscription.links.find(link => link.rel === 'approve').href;
-        
+
         return res.status(200).json({
             success: true,
             approval_url: approvalLink
@@ -2298,37 +2356,189 @@ router.post('/api/create_subscription', cors(), async (req, res) => {
         });
     }
 });
+router.post('/api/capture_subscription', cors(), async (req, res) => {
+    res.setHeader('Content-Type', 'application/json');
+    res.setHeader('Cache-Control', 's-max-age=1, stale-while-revalidate');
+    res.setHeader('Access-Control-Allow-Origin', ALLOWED_ORIGIN); // Configura tu origen permitido
+    res.setHeader('Access-Control-Allow-Credentials', "true");
 
+    const { subscription_id, token, planId } = req.body; // Extrae subscription_id, token, planId del body
+    const sessionToken = req.cookies["sessionToken"]; // Accede directamente a la cookie "sessionToken"
 
+    // Valida que todos los parámetros estén presentes
+    if (!subscription_id || !token || !sessionToken || !planId) {
+        return res.status(400).json({ error: 'Subscription ID, token, sessionToken, and planId are required' });
+    }
 
+    try {
+        await clientDB.connect(); // Conecta a la base de datos
 
-router.post('/api/paypal-webhook', async (req, res) => {
-    const body = req.body;
+        // Decodifica el token JWT
+        let decoded;
+        try {
+            decoded = jwt.verify(sessionToken, process.env.JWT_SECRET); // Verifica el token
+        } catch (error) {
+            return res.status(401).json({ error: 'Invalid session token' });
+        }
 
-    // Verificar la autenticidad del webhook (opcional pero recomendado)
-    // Puedes usar el SDK de PayPal para verificar el evento
+        // Determina el tipo de cuenta según el plan seleccionado
+        let accountType;
+        if (planId === 'plan-id-free') {
+            accountType = 'free';
+        } else if (planId === 'plan-id-small') {
+            accountType = 'small_business';
+        } else if (planId === 'plan-id-large') {
+            accountType = 'enterprise';
+        }
 
-    // Manejar diferentes tipos de eventos
-    if (body.event_type === 'BILLING.SUBSCRIPTION.ACTIVATED') {
-        // Obtener la información relevante de la suscripción
-        const subscriptionId = body.resource.id; // El ID de la suscripción activada
-        const userEmail = body.resource.subscriber.email_address; // Email del usuario (si es relevante)
-        const planId = body.resource.plan_id; // El ID del plan asociado a la suscripción
-        
-        // Aquí puedes guardar esta información en tu base de datos o realizar acciones adicionales
-        console.log(`Suscripción activada para el plan ${planId} y usuario ${userEmail}`);
+        // Crea el objeto de suscripción
+        const newSubscription = {
+            userId: new ObjectId(decoded.id), // Usa el ID del usuario decodificado
+            planId: planId,
+            status: 'active',
+            createdAt: new Date(),
+            updatedAt: new Date(),
+        };
 
-        // Responder a PayPal que el webhook fue recibido correctamente
-        res.status(200).send('Webhook recibido correctamente');
-    } else if (body.event_type === 'PAYMENT.SALE.COMPLETED') {
-        // Puedes manejar otros eventos, como el pago completado
-        console.log(`Pago completado para la suscripción ${body.resource.billing_agreement_id}`);
-        res.status(200).send('Pago completado');
-    } else {
-        // Manejar otros tipos de eventos que te interesen
-        res.status(200).send('Evento no relevante');
+        // Inserta la suscripción en la base de datos
+        const savesSubscription = await clientDB.db("mercado").collection("subscription").insertOne(newSubscription);
+
+        // Verifica si la suscripción se guardó correctamente
+        if (!savesSubscription.acknowledged) {
+            return res.status(500).json({ error: 'Failed to save subscription' });
+        }
+
+        console.log('Suscripción capturada y tipo de cuenta actualizado:', savesSubscription);
+
+        // Responde con éxito y el ID de la suscripción
+        return res.status(200).json({
+            success: true,
+            subscriptionId: savesSubscription.insertedId, // Devuelve el ID de la suscripción guardada
+        });
+    } catch (error) {
+        console.error('Error capturing subscription or updating user:', error.message);
+        return res.status(500).json({
+            error: 'Internal server error while capturing subscription or updating user',
+            details: error.message
+        });
+    } finally {
+        await clientDB.close(); // Cierra la conexión a la base de datos
     }
 });
 
+
+router.post('/api/notify_delivery', cors(), async (req, res) => {
+    res.setHeader('Content-Type', 'application/json');
+    res.setHeader('Cache-Control', 's-max-age=1, stale-while-revalidate');
+    res.setHeader('Access-Control-Allow-Origin', ALLOWED_ORIGIN); // Configura tu origen permitido
+    res.setHeader('Access-Control-Allow-Credentials', "true");
+
+    const { orderId_mongo } = req.body;
+    // Validación del ID de la orden
+    if (!ObjectId.isValid(orderId_mongo)) {
+        return res.status(400).json({ error: 'ID de orden inválido' });
+    }
+
+    try {
+        // Conectar a la base de datos
+        await clientDB.connect();
+        const db = clientDB.db('mercado');
+        const collection = db.collection('order');
+
+        console.log(orderId_mongo)
+        // Actualizar el estado de entrega
+     /*    const result = await collection.findOneAndUpdate(
+            { _id: new ObjectId(orderId_mongo) },
+            { $set: { seller_delivered: true } },
+            {
+                returnDocument: "after",
+                projection: { "payer.email_address": 1, }
+            } // Devuelve el documento actualizado
+        ); */
+        if (result.matchedCount === 0) {
+            return res.status(404).json({ error: 'Orden no encontrada' });
+        }
+
+        if (result.modifiedCount === 0) {
+            return res.status(400).json({ error: 'No se pudo actualizar el estado de la orden' });
+        }
+
+        /* send(result.payer.email_address, orderId_mongo) */
+
+        // se le envia un mail al usuario con el link a la pagina de entrega de producto
+
+        // Se busca el mail del usuario comprador en la orden y se le envia un email
+
+
+
+        // Enviar respuesta exitosa
+        return res.status(200).json({ message: 'Estado de entrega actualizado' });
+    } catch (error) {
+        console.error('Error al actualizar la orden:', error);
+        return res.status(500).json({ error: 'Error al actualizar el estado de entrega' });
+    } /* finally {
+        // Cerrar la conexión a la base de datos si se ha abierto
+        await clientDB.close();
+    } */
+});
+router.post('/api/notify_delivery_by_buyer', cors(), async (req, res) => {
+    res.setHeader('Content-Type', 'application/json');
+    res.setHeader('Cache-Control', 's-max-age=1, stale-while-revalidate');
+    res.setHeader('Access-Control-Allow-Origin', ALLOWED_ORIGIN); // Configura tu origen permitido
+    res.setHeader('Access-Control-Allow-Credentials', "true");
+
+    const { orderId_mongo } = req.body;
+    // Validación del ID de la orden
+    if (!ObjectId.isValid(orderId_mongo)) {
+        return res.status(400).json({ error: 'ID de orden inválido' });
+    }
+
+    try {
+        // Conectar a la base de datos
+        await clientDB.connect();
+        const db = clientDB.db('mercado');
+        const collection = db.collection('order');
+
+        console.log(orderId_mongo)
+        // Actualizar el estado de entrega
+        const result = await collection.findOneAndUpdate(
+            { _id: new ObjectId(orderId_mongo) },
+            { $set: { buyer_delivered: true } },
+            {
+                returnDocument: "after"
+            } // Devuelve el documento actualizado
+        );
+        if (result.matchedCount === 0) {
+            return res.status(404).json({ error: 'Orden no encontrada' });
+        }
+
+        if (result.modifiedCount === 0) {
+            return res.status(400).json({ error: 'No se pudo actualizar el estado de la orden' });
+        }
+
+
+        // Enviar respuesta exitosa
+        return res.status(200).json({ message: 'Estado de entrega actualizado', data: result });
+    } catch (error) {
+        console.error('Error al actualizar la orden:', error);
+        return res.status(500).json({ error: 'Error al actualizar el estado de entrega' });
+    } /* finally {
+        // Cerrar la conexión a la base de datos si se ha abierto
+        await clientDB.close();
+    } */
+});
+
+
+router.get('/product/review/', cors(), (req, res) => {
+    res.setHeader('Content-Type', 'application/json');
+    res.setHeader('Cache-Control', 's-max-age=1, stale-while-revalidate');
+    res.setHeader('Access-Control-Allow-Origin', ALLOWED_ORIGIN); // Configura tu origen permitido
+    res.setHeader('Access-Control-Allow-Credentials', "true");
+    const sessionToken = req.cookies["sessionToken"];
+
+    // Procesa el token como sea necesario, por ejemplo, verificar su validez
+    // Luego envía una respuesta adecuada
+    res.json({ message: 'Token recibido', sessionToken });
+});
 
 export default router
