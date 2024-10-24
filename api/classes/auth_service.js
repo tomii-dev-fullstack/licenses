@@ -4,7 +4,7 @@ import bcrypt from "bcrypt";
 
 class AuthService {
     constructor() {
-        this.collection = clientDB.db("mercado").collection('user'); // Nombre de la colección de usuarios
+        this.collection = clientDB.db("keplan").collection('user'); // Nombre de la colección de usuarios
     }
 
     // Registro de nuevo usuario
@@ -23,6 +23,7 @@ class AuthService {
             email,
             password: hashedPassword,
             name,
+            type_plan: "plan-id-free",
             createdAt: new Date(),
         };
 

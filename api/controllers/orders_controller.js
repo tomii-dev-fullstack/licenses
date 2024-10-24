@@ -1,5 +1,7 @@
 import jwt from "jsonwebtoken"
 import OrderService from '../classes/order_service.js'; // Importación con ES Modules
+import { ObjectId } from "mongodb";
+import { send } from "../nodemailer/config.js";
 const { PAYPAL_CLIENT_ID, PAYPAL_CLIENT_SECRET } = process.env;
 const orderService = new OrderService();
 
@@ -116,15 +118,15 @@ async function handleResponse(response) {
     } catch (err) {
         const errorMessage = await response.text();
         throw new Error(errorMessage);
-    }   
+    }
 }
-export const captureOrder = async (req,res) => {
+export const captureOrder = async (req, res) => {
     try {
         const { orderID } = req.params;
-    
+
         const sessionToken = req.cookies["sessionToken"];
         const { jsonResponse, httpStatusCode } = await captureOrderr(orderID);
-console.log(jsonResponse, httpStatusCode)
+        console.log(jsonResponse, httpStatusCode)
         let decoded = jwt.verify(sessionToken, process.env.JWT_SECRET); // Verifica el token
 
 
@@ -192,4 +194,85 @@ const captureOrderr = async (orderID) => {
     });
 
     return handleResponse(response);
+};
+export const notifyDelivery = async (req, res) => {
+    const { orderId_mongo } = req.body;
+    // Validación del ID de la orden
+    if (!ObjectId.isValid(orderId_mongo)) {
+        return res.status(400).json({ error: 'ID de orden inválido' });
+    }
+
+    const result = await orderService.notifyDeliverySeller(orderId_mongo)
+    try {
+        // Conectar a la base de datos
+        if (result.matchedCount === 0) {
+            return res.status(404).json({ error: 'Orden no encontrada' });
+        }
+
+        if (result.modifiedCount === 0) {
+            return res.status(400).json({ error: 'No se pudo actualizar el estado de la orden' });
+        }
+
+        send(result.payer.email_address, orderId_mongo)
+
+        // Enviar respuesta exitosa
+        return res.status(200).json({ message: 'Estado de entrega actualizado', data: result });
+    } catch (error) {
+        console.error('Error al actualizar la orden:', error);
+        return res.status(500).json({ error: 'Error al actualizar el estado de entrega' });
+    }
+};
+export const notifyDeliveryByBuyer = async (req, res) => {
+    const { orderId_mongo } = req.body;
+    // Validación del ID de la orden
+    if (!ObjectId.isValid(orderId_mongo)) {
+        return res.status(400).json({ error: 'ID de orden inválido' });
+    }
+
+    try {
+
+        // Actualizar el estado de entrega
+        const result = await orderService.notifyDeliveryByBuyer(orderId_mongo)
+        if (result.matchedCount === 0) {
+            return res.status(404).json({ error: 'Orden no encontrada' });
+        }
+
+        if (result.modifiedCount === 0) {
+            return res.status(400).json({ error: 'No se pudo actualizar el estado de la orden' });
+        }
+
+
+        // Enviar respuesta exitosa
+        return res.status(200).json({ message: 'Estado de entrega actualizado', data: result });
+    } catch (error) {
+        console.error('Error al actualizar la orden:', error);
+        return res.status(500).json({ error: 'Error al actualizar el estado de entrega' });
+    }
+};
+export const getOrders = async (req, res) => {
+
+    try {
+        const token = req.cookies?.sessionToken;
+
+        if (!token) {
+            return res.status(401).json({ error: 'No autorizado' });
+        }
+
+        // Decodificar el token
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        // Actualizar el estado de entrega
+        const result = await orderService.getOrders(decoded.id)
+        console.log(result);
+        if (result > 0) {
+            return res.status(404).json({ data: result });
+        }
+
+
+
+        // Enviar respuesta exitosa
+        return res.status(200).json({ message: 'Estado de entrega actualizado', data: result });
+    } catch (error) {
+        console.error('Error al actualizar la orden:', error);
+        return res.status(500).json({ error: 'Error al actualizar el estado de entrega' });
+    }
 };

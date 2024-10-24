@@ -38,19 +38,35 @@ export const uploadFileToS3 = async (file,user, product) => {
         throw error;
     }
 };
-export const deleteFileFromS3 = async (file,user, product) => {
+export const uploadFileServiceToS3 = async (file,user,service_name) => {
     try {
         console.log(file);
         const stream = fs.createReadStream(file.path);
         const uploadParams = {
             Bucket: AWS_BUCKET_NAME,
-            Key: `${user}/${product}/${file.originalname}`,
+            Key: `${user}/${service_name}/${file.originalname}`,
             Body: stream,
             ACL: 'public-read',
         };
-        const command = new DeleteObjectCommand(uploadParams);
+        const command = new PutObjectCommand(uploadParams);
         const result = await client.send(command);
         console.log('Archivo subido:', result);
+        return result;
+    } catch (error) {
+        console.error('Error al subir archivo:', error);
+        throw error;
+    }
+};
+export const deleteFileFromS3 = async (file,user, product) => {
+    try {
+       
+        const uploadParams = {
+            Bucket: AWS_BUCKET_NAME,
+            Key: `${user}/${product}/${file}`,
+        };
+        const command = new DeleteObjectCommand(uploadParams);
+        const result = await client.send(command);
+        console.log('Archivo eliminado:', result);
         return result;
     } catch (error) {
         console.error('Error al subir archivo:', error);

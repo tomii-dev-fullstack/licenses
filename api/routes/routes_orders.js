@@ -1,11 +1,14 @@
 import { Router } from "express";
-import { captureOrder, createOrder, saveOrderProducts } from "../controllers/orders_controller.js";
+import { captureOrder,getOrders, createOrder,notifyDelivery, notifyDeliveryByBuyer, saveOrderProducts } from "../controllers/orders_controller.js";
 const router = Router();
 
 // Crear un nuevo pedido
-router.post('/orders',createOrder );
-router.post('/orders/:orderID/capture',captureOrder );
-router.post('/orders/save_products/:id',saveOrderProducts );
+router.post('/corders', createOrder);
+router.get('/orders', getOrders);
+router.post('/orders/:orderID/capture', captureOrder);
+router.post('/orders/save_products/:id', saveOrderProducts);
+router.post('/notify_delivery', notifyDelivery);
+router.post('/notify_delivery_by_buyer', notifyDeliveryByBuyer);
 
 // Obtener pedidos del usuario autenticado
 /* router.get('/my-orders', authenticate, orderController.getMyOrders);

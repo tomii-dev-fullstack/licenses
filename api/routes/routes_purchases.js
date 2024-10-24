@@ -1,7 +1,6 @@
 import { Router } from 'express';
 
-import authenticate from '../middlewares/auth.js';
-import { getPurchases } from '../controllers/purchases_controller.js';
+import { getPurchaseById, getPurchases } from '../controllers/purchases_controller.js';
 /* import checkPermission from '../middlewares/checkPermission.js';
  */
 const router = Router();
@@ -13,6 +12,7 @@ const router = Router();
 
 // Obtener un producto por ID
 router.post('/user_purchases/:id', getPurchases);
+router.get('/purchase_detail_order/:id', getPurchaseById);
 
 /* // Actualizar un producto (solo el vendedor que lo creó o admin)
 router.put('/:id', authenticate , checkPermission('update_product'), updateProduct);

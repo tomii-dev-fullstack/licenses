@@ -150,7 +150,7 @@ class PayPalClient {
                     application_context: {
                         brand_name: "chetiendas",
                         user_action: "SUBSCRIBE_NOW",
-                        return_url: `${ALLOWED_ORIGIN}/planes_de_pago`,
+                        return_url: `${ALLOWED_ORIGIN}/p`,// redirigir al inicio del administrador
                         cancel_url: `${ALLOWED_ORIGIN}/`,
                     }
                 },

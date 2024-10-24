@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { getSells } from '../controllers/sells_controller.js';
+import { getSellDetailOrder, getSells } from '../controllers/sells_controller.js';
 /* import checkPermission from '../middlewares/checkPermission.js';
  */
 const router = Router();
@@ -11,6 +11,7 @@ const router = Router();
 
 // Obtener un producto por ID
 router.post('/user_sells/:id', getSells);
+router.get('/sell_detail_order/:id', getSellDetailOrder);
 
 /* // Actualizar un producto (solo el vendedor que lo creó o admin)
 router.put('/:id', authenticate , checkPermission('update_product'), updateProduct);

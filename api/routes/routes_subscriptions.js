@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { captureSubscription, createSubscription } from '../controllers/subscription_controller.js';
+import { captureSubscription, createSubscription ,cancelSubscription} from '../controllers/subscription_controller.js';
 /* import checkPermission from '../middlewares/checkPermission.js';
  */
 const router = Router();
@@ -12,6 +12,7 @@ const router = Router();
 // Obtener un producto por ID
 router.post('/create_subscription', createSubscription);
 router.post('/capture_subscription', captureSubscription);
+router.post('/cancel_subscription', cancelSubscription);
 
 /* // Actualizar un producto (solo el vendedor que lo creó o admin)
 router.put('/:id', authenticate , checkPermission('update_product'), updateProduct);

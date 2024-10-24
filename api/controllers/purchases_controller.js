@@ -25,6 +25,27 @@ export const getPurchases = async (req, res) => {
         res.status(400).json({ message: 'Error al obtener compras' });
     }
 };
+export const getPurchaseById = async (req, res) => {
+    try {
+
+        const { id } = req.params;
+        // Verifica si el ID fue proporcionado
+        if (!id) {
+            return res.status(400).json({ success: 400, message: 'ID is required' });
+        }
+        const purchases = await purchaseService.getPurchaseById(id);
+        console.log(purchases);
+        if (purchases.length > 0) {
+            console.log(purchases)
+            return res.status(200).json({ data: purchases });
+        } else {
+            return res.status(404).json({ message: "No purchases found for the user" });
+        }
+    } catch (error) {
+
+        res.status(400).json({ message: 'Error al obtener compras' });
+    }
+};
 
 // Inicio de sesión
  export const createPurchase = async (req, res) => {

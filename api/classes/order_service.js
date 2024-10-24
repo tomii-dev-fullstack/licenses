@@ -5,7 +5,7 @@ import jwt from "jsonwebtoken";
 
 class OrderService {
     constructor() {
-        this.collection = clientDB.db("mercado").collection('order'); // Nombre de la colección de usuarios
+        this.collection = clientDB.db("keplan").collection('order'); // Nombre de la colección de usuarios
     }
 
     async createOrder(jsonResponse, decoded) {
@@ -15,6 +15,41 @@ class OrderService {
 
 
         return insertedOrder
+    };
+    async getOrders(id) {
+        console.log(id)
+        // Verificar si el usuario ya existe
+        return this.collection.aggregate([
+            {
+                $match: {
+                    user_id: new ObjectId(id)
+                }
+            }
+        ]).toArray();
+    };
+    async notifyDeliverySeller(orderId_mongo) {
+        // Verificar si el usuario ya existe
+        return this.collection.findOneAndUpdate(
+            { _id: new ObjectId(orderId_mongo) },
+            { $set: { seller_delivered: true } },
+            {
+                returnDocument: "after"
+            } // Devuelve el documento actualizado
+        );
+
+
+    };
+    async notifyDeliveryByBuyer(orderId_mongo) {
+        // Verificar si el usuario ya existe
+        return this.collection.findOneAndUpdate(
+            { _id: new ObjectId(orderId_mongo) },
+            { $set: { buyer_delivered: true } },
+            {
+                returnDocument: "after"
+            } // Devuelve el documento actualizado
+        );
+
+
     };
     async getOrder(id) {
         // Verificar si el usuario ya existe

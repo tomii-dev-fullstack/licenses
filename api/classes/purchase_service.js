@@ -1,5 +1,4 @@
 import { clientDB } from "../../lib/database.js";
-import jwt from "jsonwebtoken";
 import { ObjectId } from "mongodb";
 
 class PurchaseService {
@@ -7,39 +6,6 @@ class PurchaseService {
         this.collection = clientDB.db("mercado").collection('order'); // Nombre de la colección de usuarios
     }
 
-    // Registro de nuevo usuario
-    /*     async createPurchase(purchaseData) {
-            const { email, password, name } = purchaseData;
-    
-            // Verificar si el usuario ya existe
-            const existingUser = await this.collection.findOne({ email });
-            if (existingUser) throw new Error('Usuario ya registrado con este email');
-    
-            // Hashear la contraseña antes de guardarla
-            const hashedPassword = await bcrypt.hash(password, 10);
-    
-            // Crear nuevo usuario
-            const user = {
-                email,
-                password: hashedPassword,
-                name,
-                createdAt: new Date(),
-            };
-    
-            // Guardar el usuario en la base de datos
-            await this.collection.insertOne(user);
-    
-            // Generar y retornar el token JWT
-            const token = jwt.sign(
-                { email: user.email },
-                process.env.JWT_SECRET,
-                { expiresIn: '30d' } // El token expirará en 30 días
-            );
-    
-            return { token };
-        } */
-
-    // Iniciar sesión
     async getPurchases(id) {
         // Buscar usuario por email
         const purchases = await this.collection.aggregate([
@@ -53,6 +19,28 @@ class PurchaseService {
         if (!purchases) throw new Error('Compras no encontradas');
 
         return purchases
+    }
+    async getPurchaseById(id) {
+        // Buscar usuario por email
+        const purchase = await this.collection.aggregate([
+            {
+                // Filtramos la orden por su _id
+                $match: {
+                    _id: new ObjectId(id),
+                },
+            },
+            {
+                $lookup: {
+                    from: "user",
+                    localField: "cart.user_product", // Referencia al usuario del producto
+                    foreignField: "_id", // Campo en 'user' que será comparado (el '_id' de usuario)
+                    as: "user_product" // El resultado del lookup será almacenado en 'user_product'
+                }
+            }
+        ]).toArray();
+        if (!purchase) throw new Error('Compra no encontrada');
+
+        return purchase
     }
 }
 

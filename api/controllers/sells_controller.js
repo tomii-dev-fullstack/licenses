@@ -1,3 +1,4 @@
+import { ObjectId } from 'mongodb';
 import { auth } from '../../firebase.js'; // Importar configuración de Firebase
 import SellService from '../classes/sell_service.js';
 
@@ -25,40 +26,30 @@ export const getSells = async (req, res) => {
         res.status(400).json({ message: 'Error al obtener compras' });
     }
 };
+export const getSellDetailOrder = async (req, res) => {
+    const { id } = req.params;
 
-// Inicio de sesión
+    // Verifica si el ID fue proporcionado
+    if (!id) {
+        return res.status(400).json({ success: 400, message: 'ID is required' });
+    }
 
-/* export const createPurchase = async (req, res) => {
+    console.log("Uid de orden: " + id);
 
     try {
-        const { token } = req.body;
-        if (!token) {
-            return res.status(400).json({ message: 'Token no proporcionado' });
+
+        // Realiza el aggregate para encontrar las compras del usuario
+        const order_detail = await sellService.getSellById(id);
+        console.log("Orden: ", order_detail);
+        if (order_detail) {
+            res.status(200).json({ data: order_detail });
+        } else {
+            res.status(404).json({ message: "No purchases found for the user" });
         }
-
-        // Verificar el token con Firebase
-        const decodedToken = await auth.verifyIdToken(token);
-        const userEmail = decodedToken.email;
-
-        // Llamar al método de inicio de sesión del servicio de autenticación
-        const { sessionToken: sessionToken } = await purchaseService.(userEmail);
-        console.log(sessionToken)
-        if (!sessionToken) {
-            return res.status(401).json({ message: 'Credenciales inválidas' });
-        }
-
-        // Crear el token de sesión
-        res.cookie('sessionToken', sessionToken, {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === 'production', // Solo en HTTPS en producción
-            sameSite: 'Strict', // Cambiar a 'None' en producción si usas cookies cross-site
-            maxAge: 24 * 60 * 60 * 1000 // 1 día de vida útil
-        });
-        return res.status(200).json({ message: 'Login exitoso' });
-
     } catch (error) {
-        console.error('Error al iniciar sesión:', error);
-        res.status(401).json({ message: 'Credenciales inválidas' });
+        console.error('Error al obtener los items:', error);
+        res.status(500).json({ message: 'Internal server error' });
     }
-}; */
+};
+
 
