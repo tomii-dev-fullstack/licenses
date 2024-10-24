@@ -1,4 +1,3 @@
-import { auth } from '../../firebase.js'; // Importar configuración de Firebase
 import PurchaseService from '../classes/purchase_service.js'; // Importación con ES Modules
 
 const purchaseService = new PurchaseService();

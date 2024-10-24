@@ -1,5 +1,4 @@
 import { ObjectId } from 'mongodb';
-import { auth } from '../../firebase.js'; // Importar configuración de Firebase
 import SellService from '../classes/sell_service.js';
 
 const sellService = new SellService();
