@@ -1,4 +1,3 @@
-import { auth } from '../../firebase.js'; // Importar configuración de Firebase
 import AuthService from '../classes/auth_service.js'; // Importación con ES Modules
 import jwt from 'jsonwebtoken'; // Asegúrate de instalar jsonwebtoken
 import UserService from '../classes/user_service.js';
