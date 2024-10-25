@@ -101,8 +101,8 @@ export const login = async (req, res) => {
         // Crear el token de sesión (puedes usar JWT u otro mecanismo)
         const sessionToken = jwt.sign(
             {
-                id: user[0]._id,
-                email: user[0].email,
+                id: user._id,
+                email: user.email,
 
                 /*      nombre: user.nombre, */
                 // Puedes agregar más datos aquí si es necesario
