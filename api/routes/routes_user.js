@@ -28,29 +28,7 @@ router.get('/check-auth', /* authenticate */checkAuth);
 router.post('/logout', /* authenticate */logout);
 router.post('/add-client', /* authenticate */postClient);
 router.get('/clients', /* authenticate */getClients);
-router.get('/api/check-auth', (req, res) => {
 
-    const token = req.cookies;
-    console.log(token);
-
-    if (!token) {
-        return res.status(401).json({ error: 'No autorizado' });
-    }
-
-    try {
-        const decoded = jwt.verify(token.sessionToken, process.env.JWT_SECRET);
-        res.status(200).json({
-            user: {
-                id: decoded.id,
-                email: decoded.email,
-                published_products: decoded.published_products
-            }
-        });
-    } catch (error) {
-        console.error('Error verifying token:', error);
-        res.status(401).json({ error: 'No autorizado' });
-    }
-});
 router.post('/api/logout', (req, res) => {
     // Elimina la cookie de sesión
     res.clearCookie('sessionToken', {
