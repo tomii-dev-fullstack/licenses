@@ -32,7 +32,7 @@ export const checkAuth = async (req, res) => {
             user: {
                 id: decoded.id,
                 email: decoded.email,
-                published_products: decoded.published_products
+             
             }
         });
     } catch (error) {
