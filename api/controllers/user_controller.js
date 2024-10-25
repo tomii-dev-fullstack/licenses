@@ -115,7 +115,7 @@ export const login = async (req, res) => {
         console.log(user);
         // Configurar la cookie del token de sesión
         res.cookie('sessionToken', sessionToken, {
-            httpOnly: false,
+            httpOnly: true,
             secure: true,
             sameSite: "None",
             maxAge: 30 * 24 * 60 * 60 * 1000
