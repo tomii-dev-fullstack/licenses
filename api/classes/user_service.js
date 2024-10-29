@@ -78,7 +78,7 @@ class UserService {
       }
     );
   }
-  async getUserById(id) {
+  async   getUserById(id) {
 
     return this.collection.findOne(
       { email: id }

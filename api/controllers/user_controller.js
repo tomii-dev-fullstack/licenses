@@ -122,7 +122,7 @@ export const login = async (req, res) => {
         });
 
         // Respuesta exitosa
-        return res.redirect('/');
+        return res.status(200).json({ message: 'Login exitoso', user: user });
 
     } catch (error) {
         console.error('Error al iniciar sesión:', error);
