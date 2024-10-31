@@ -44,7 +44,8 @@ export const logout = async (req, res) => {
     res.clearCookie('sessionToken', {
         httpOnly: true,
         secure: true,
-        sameSite: 'strict'// pasar a otro val en prod
+        sameSite: 'strict',// pasar a otro val en prod
+        maxAge: 30 * 24 * 60 * 60 * 1000
     });
 
     // Responde con un mensaje de éxito
