@@ -20,9 +20,9 @@ export const register = async (req, res) => {
 // Inicio de sesión
 export const checkAuth = async (req, res) => {
     const sessionToken = req.cookies["sessionToken"];
-    console.log(token);
+    console.log(sessionToken);
 
-    if (!token) {
+    if (!sessionToken) {
         return res.status(401).json({ error: 'No autorizado' });
     }
 
