@@ -19,7 +19,7 @@ export const register = async (req, res) => {
 
 // Inicio de sesión
 export const checkAuth = async (req, res) => {
-    const token = req.cookies;
+    const sessionToken = req.cookies["sessionToken"];
     console.log(token);
 
     if (!token) {
@@ -27,7 +27,7 @@ export const checkAuth = async (req, res) => {
     }
 
     try {
-        const decoded = jwt.verify(token.sessionToken, process.env.JWT_SECRET);
+        const decoded = jwt.verify(sessionToken, process.env.JWT_SECRET);
         res.status(200).json({
             user: {
                 id: decoded.id,
