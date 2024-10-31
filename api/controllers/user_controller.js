@@ -27,7 +27,7 @@ export const checkAuth = async (req, res) => {
     }
 
     try {
-        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        const decoded = jwt.verify(token.sessionToken, process.env.JWT_SECRET);
         res.status(200).json({
             user: {
                 id: decoded.id,
