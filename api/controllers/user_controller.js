@@ -19,15 +19,15 @@ export const register = async (req, res) => {
 
 // Inicio de sesión
 export const checkAuth = async (req, res) => {
-    const sessionToken = req.cookies["sessionToken"];
-    console.log(sessionToken);
+    const token = req.cookies;
+    console.log(token);
 
-    if (!sessionToken) {
+    if (!token) {
         return res.status(401).json({ error: 'No autorizado' });
     }
 
     try {
-        const decoded = jwt.verify(sessionToken, process.env.JWT_SECRET);
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
         res.status(200).json({
             user: {
                 id: decoded.id,
