@@ -23,7 +23,7 @@
                 "OPTIONS"
             ],
             "headers": {
-                "Access-Control-Allow-Origin": "https://unabuenauy.com",
+                "Access-Control-Allow-Origin": "https://keplan-admin.vercel.app/",
                 "Access-Control-Allow-Credentials": "true"
             }
         }
