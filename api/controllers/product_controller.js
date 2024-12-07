@@ -102,24 +102,24 @@ export const getProductById = async (req, res) => {
         res.status(500).json({ message: 'Error al obtener el producto' });
     }
 };
-export const getOnlyProductById = async (req, res) => {
+export const getOnlyProductByIdd = async (req, res) => {
     try {
-        const { id, idProduct } = req.params;
-
+        const { id } = req.params;
+        console.log(id)
         // Validación mejorada de los parámetros
-        if (!id || !idProduct) {
+        if (!id) {
             return res.status(400).json({ message: 'Both id and idProduct are required' });
         }
 
-        const product = await productService.getOnlyProductById(idProduct);
+        const product = await productService.getOnlyProductById(id);
+        console.log(product);
         if (!product) {
             return res.status(404).json({ message: 'Producto no encontrado' });
         }
-        if (product.length > 0) {
-            return res.status(200).json({ data: product });
-        } else {
-            return res.status(404).json({ message: 'No products found for the given ID' });
-        }
+
+        return res.status(200).json({ success: true, data: product });
+
+
 
     } catch (error) {
         console.error('Error al obtener el producto:', error);
@@ -234,10 +234,25 @@ export const getSuppliers = async (req, res) => {
 };
 export const getProductsByCategory = async (req, res) => {
     try {
-        const {category} = req.body
-    
+        const { category } = req.body
+
         const products = await productService.getProductsByCategory(category)
 
+        if (products.length > 0) {
+            res.status(200).json({ data: products });
+        }
+
+    } catch (error) {
+        console.error('Error al obtener categorias:', error);
+        res.status(500).json({ message: 'Error al obtener los productos' });
+    }
+};
+export const getProductsByProductType= async (req, res) => {
+    try {
+     
+
+        const products = await productService.getProductsByProdType()
+        console.log(products)
         if (products.length > 0) {
             res.status(200).json({ data: products });
         }

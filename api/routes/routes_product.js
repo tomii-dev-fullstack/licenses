@@ -2,7 +2,7 @@ import express from 'express';
 import multer from 'multer';
 import path from 'path';
 const router = express.Router();
-import { createProduct, getAllProducts, getOnlyProductById, getProductById, updateProduct ,deleteImage, getAllImagesOfProducts,uploadImageToProduct, getSuppliers, getProductsByCategory} from '../controllers/product_controller.js';
+import { createProduct, getAllProducts, getOnlyProductByIdd,getProductsByProductType, getProductById, updateProduct ,deleteImage, getAllImagesOfProducts,uploadImageToProduct, getSuppliers, getProductsByCategory} from '../controllers/product_controller.js';
 /* import checkPermission from '../middlewares/checkPermission.js';
  */
 const storage = multer.diskStorage({
@@ -19,9 +19,11 @@ const upload = multer({ storage });
 /* router.post('/', authenticate,  checkPermission('create_product'),  createProduct);
  */
 // Obtener todos los productos
+router.get('/get-product-by-id/:id', getOnlyProductByIdd);
 router.get('/products', getAllProducts);
 router.get('/get-suppliers', getSuppliers);
 router.get('/all-images', getAllImagesOfProducts);
+router.get('/productsbyproductstype', getProductsByProductType);
 router.post('/save-edits', updateProduct);
 router.post('/add-product', upload.array("images"), createProduct);
 router.post('/editimage', deleteImage);
@@ -30,8 +32,7 @@ router.post('/productsbycategory', getProductsByCategory);
 
 router.post('/upload-product-image', upload.array("image"), uploadImageToProduct);
 
-router.get('/api/:id/:idProduct', getProductById);
-router.get('/api/:id', getOnlyProductById);
+router.get('/:id/:idProduct', getProductById);
 
 /* // Actualizar un producto (solo el vendedor que lo creó o admin)
 router.put('/:id', authenticate , checkPermission('update_product'), updateProduct);

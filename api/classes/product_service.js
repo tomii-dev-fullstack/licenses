@@ -4,7 +4,7 @@ import { clientDB } from "../../lib/database.js";
 // services/ProductService.js
 class ProductService {
     constructor() {
-        this.collection = clientDB.db("keplan").collection('product'); // Nombre de la colección de usuarios
+        this.collection = clientDB.db("tienda").collection('product'); // Nombre de la colección de usuarios
     }
 
     async getAllProducts(id) {
@@ -47,8 +47,8 @@ class ProductService {
         ]).toArray();
     }
 
-    async getOnlyProductById({ productId }) {
-        return this.collection.findOne({ _id: new ObjectId(productId) })
+    async getOnlyProductById(productId) {
+        return this.collection.find({ _id: new ObjectId(productId) }).toArray();
     }
 
     async getProductById(productId) {
@@ -93,16 +93,41 @@ class ProductService {
     async getProductsByCategory(category) {
         console.log(category);
         return this.collection.aggregate([
-            { 
-                $match: { proveedor: category } 
+            {
+                $match: { categoria: category }
             }
         ]).toArray();
     }
-    
+    async getProductsByProdType() {
+        try {
+            const results = await this.collection.aggregate([
+                {
+                    $group: {
+                        _id: "$productoTipo", // Agrupar por productoTipo
+                        categorias: { $addToSet: "$categoria" } // Consolidar categorías únicas en un array
+                    }
+                },
+                {
+                    $project: {
+                        _id: 0, // Excluir el _id del resultado
+                        productoTipo: "$_id", // Renombrar _id a productoTipo
+                        categorias: 1 // Incluir las categorías
+                    }
+                }
+            ]).toArray();
+    console.log(results)
+            return results;
+        } catch (error) {
+            console.error("Error fetching products and categories:", error);
+            throw new Error("Could not fetch products and categories");
+        }
+    }
+
     async getSuppliers() {
         try {
             // Accede directamente a la colección de productos desde `this.collection`
-            const suppliers = await this.collection.find().toArray();
+            const suppliers = await this.collection.distinct("categoria");
+            console.log(suppliers)
             return suppliers;
         } catch (error) {
             console.error('Error fetching suppliers:', error);

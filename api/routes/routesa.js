@@ -641,7 +641,7 @@ router.get("/api/edit_product/:id", cors(), async (req, res) => {
 router.get('/api/check-auth', cors(), (req, res) => {
     res.setHeader('Access-Control-Allow-Origin', ALLOWED_ORIGIN)
     res.setHeader('Access-Control-Allow-Credentials', "true");
-    const token = req.cookies;
+    
     console.log(token);
 
     if (!token) {
