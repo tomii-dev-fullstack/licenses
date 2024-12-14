@@ -128,7 +128,8 @@ class ProductService {
                     titulo: 1, // Incluir el campo título
                     productoTipo: 1, // Incluir el campo productoTipo
                     categoria: 1, // Incluir el campo categoria
-                    variantes: 1
+                    variantes: 1,
+                    precio:1
                 },
             },
         ]).toArray();

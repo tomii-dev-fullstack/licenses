@@ -481,7 +481,7 @@ export const getProductsByProductType = async (req, res) => {
 export const registersearch = async (req, res) => {
     try {
         const { query } = req.body
-
+        console.log(query);
         const products = await productService.rsearch(query)
         console.log("Coincidencias: " + products)
         if (products.length > 0) {
