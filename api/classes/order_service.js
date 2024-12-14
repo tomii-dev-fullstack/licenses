@@ -5,7 +5,15 @@ import jwt from "jsonwebtoken";
 
 class OrderService {
     constructor() {
-        this.collection = clientDB.db("keplan").collection('order'); // Nombre de la colección de usuarios
+        this.collection = clientDB.db("tienda").collection('order'); // Nombre de la colección de usuarios
+    }
+    async createOrdenOne(order) {
+        return await this.collection.insertOne(order);
+
+    }
+    async getOrderSimple() {
+        return this.collection.find().toArray();
+
     }
 
     async createOrder(jsonResponse, decoded) {

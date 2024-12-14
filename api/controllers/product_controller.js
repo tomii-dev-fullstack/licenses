@@ -1,73 +1,188 @@
 import { ObjectId } from 'mongodb';
 import ProductService from '../classes/product_service.js';
-import { deleteFileFromS3, uploadFileToS3 } from "../s3/s3.js"
+import { deleteFileFromS3, getObjectFromS3, uploadFileToS3 } from "../s3/s3.js"
 import jwt from "jsonwebtoken"
 import UserService from '../classes/user_service.js';
+import OrderService from '../classes/order_service.js';
 const productService = new ProductService();
-const userService = new UserService()
-
+const oService = new OrderService();
 
 
 
 export const createProduct = async (req, res) => {
     try {
-        const { title, colors, supplier, stock, price, description } = req.body;
-        const token = req.cookies?.sessionToken;
+        const { body: data, files: archivos } = req;
+        const variantes = data.variantes || '[]';
 
-        if (!token) {
-            return res.status(401).json({ error: 'No autorizado' });
+        if (!data || !variantes.length) {
+            return res.status(400).json({ message: 'Datos incompletos o archivos no enviados' });
         }
 
-        // Decodificar el token
-        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        // Asignar imágenes subidas a las variantes
+        variantes.forEach((variant, index) => {
+            const imagenCampo = `variantes[${index}][imagen]`;
+            const archivo = archivos.find(file => file.fieldname === imagenCampo);
+            if (archivo) {
+                variant.imagen = archivo.originalname
+                variant.path = archivo.path
+            }
+        });
 
-        // Crear array de productos con imágenes
         const product = {
-            user_id: new ObjectId(decoded.id),
-            item: title,
-            proveedor: supplier,
-            colores: colors,
-            stock: Number(stock),
-            precio: Number(price),
-            descripcion: description,
-            imagenes: req.files.map(file => ({
-                filename: file.originalname,
-            }))// Aquí puedes agregar la lógica para almacenar la ruta de la imagen si lo necesitas
-        }
-        // Guardar el producto usando el servicio de producto
-        const savedProduct = await productService.createProduct(product);
+            titulo: data.titulo,
+            descripcion: data.descripcion,
+            productoTipo: data.productoTipo,
+            categoria: data.categoria,
+            variantes: data.variantes.map(variant => ({
+                color: variant.color,
+                imagen: variant.imagen,
+                peso: variant.peso
+            }))
+        };
+        await Promise.all(
+            variantes.map(async (variant, index) => {
+                const { imagen } = variant;
 
-        // Subir las imágenes a S3 (si esta lógica es requerida, descomenta esta sección)
+                if (!imagen) {
+                    console.log(`No hay imagen para la variante ${index}`);
+                    return;
+                }
 
-        if (savedProduct.acknowledged) {
-            const uploadPromises = req.files.map(file => uploadFileToS3(file, decoded.id, savedProduct.insertedId));
-            await Promise.all(uploadPromises);  // Esperar a que todos los archivos se suban
-        }
+                try {
+                    // Subir la imagen a S3 primero
+                    const subidaExitosa = await uploadFileToS3(variant);
+                    if (!subidaExitosa) {
+                        console.error(`Error al subir la imagen de la variante ${index}.`);
+                        return;
+                    }
 
+                    console.log(`Imagen de la variante ${index} subida exitosamente.`);
 
-        // Responder con éxito
+                    // Actualizar la base de datos con la imagen subida
+                    const updatedProduct = await productService.createProduct(product);
+                    if (!updatedProduct) {
+                        console.warn(`Producto no actualizado para la variante ${index}`);
+                        return;
+                    }
+
+                    console.log(`Producto actualizado correctamente para la variante ${index}.`);
+                } catch (error) {
+                    console.error(`Error procesando la imagen de la variante ${index}:`, error);
+                }
+            })
+        );
+
+        // Responder después de que todas las operaciones hayan finalizado
         res.status(200).json({
             message: 'Producto cargado exitosamente',
             status: 200,
         });
+
+
+        // Responder con éxito
     } catch (error) {
         console.error('Error al crear el producto:', error);
         res.status(500).json({ message: 'Error al crear el producto' });
     }
 };
+export const createSimpleOrder = async (req, res) => {
+    try {
+        const { payload } = req.body;
+        console.log(payload);
+        // Validación inicial de los datos enviados
+        if (
+            !payload ||
+            !payload.items || payload.items.length === 0 ||
+            !payload.totalAmount || isNaN(payload.totalAmount) ||
+            !payload.subtotal || isNaN(payload.subtotal) ||
+            payload.discountAmount === undefined || isNaN(payload.discountAmount) ||
+            !payload.fullName || payload.fullName === "" ||
+            !payload.deliveryOption || payload.deliveryOption === "" ||
+            !payload.address || payload.address === "" ||
+            !payload.city || payload.city === "" ||
+            !payload.postalCode || payload.postalCode === "" ||
+            !payload.phone || payload.phone === "" ||
+            !payload.email || !/^[\w.-]+@[a-zA-Z\d.-]+\.[a-zA-Z]{2,}$/.test(payload.email) // Validación básica de email
+        ) {
+            return res.status(400).json({
+                message: 'Datos incompletos o inválidos: asegúrate de llenar todos los campos requeridos correctamente.',
+                errors: {
+                    items: payload.items && payload.items.length > 0 ? null : "Se requieren items en el carrito.",
+                    totalAmount: !isNaN(payload.totalAmount) ? null : "totalAmount debe ser un número válido.",
+                    subtotal: !isNaN(payload.subtotal) ? null : "subtotal debe ser un número válido.",
+                    discountAmount: !isNaN(payload.discountAmount) ? null : "discountAmount debe ser un número válido.",
+                    fullName: payload.fullName && payload.fullName ? null : "fullName es obligatorio.",
+                    deliveryOption: payload.deliveryOption && payload.deliveryOption ? null : "deliveryOption es obligatorio.",
+                    address: payload.address && payload.address ? null : "address es obligatorio.",
+                    city: payload.city && payload.city ? null : "city es obligatorio.",
+                    postalCode: payload.postalCode && payload.postalCode ? null : "postalCode es obligatorio.",
+                    phone: payload.phone && payload.phone ? null : "phone es obligatorio.",
+                    email: /^[\w.-]+@[a-zA-Z\d.-]+\.[a-zA-Z]{2,}$/.test(payload.email) ? null : "email debe ser válido."
+                }
+            });
+        }
+
+        // Construcción de la orden
+        const order = {
+            fullName: payload.fullName,
+            deliveryOption: payload.deliveryOption,
+            address: payload.address,
+            apartment: payload.apartment,
+            city: payload.city,
+            postalCode: payload.postalCode,
+            phone: payload.phone,
+            email: payload.email,
+            notes: payload.notes,
+            paymentMethod: payload.paymentMethod,
+            items: payload.items,
+            totalAmount: payload.totalAmount,
+            subtotal: payload.subtotal,
+            discountAmount: payload.discountAmount,
+            createdAt: new Date(), // Marca de tiempo para la orden
+        };
+
+        console.log('Orden a crear:', order);
+
+        // Crear la orden en la base de datos
+        const createdOrder = await oService.createOrdenOne(order);
+
+        // Validar si la orden fue creada exitosamente
+        if (!createdOrder) {
+            console.error('Error al crear la orden en la base de datos');
+            return res.status(500).json({
+                message: 'No se pudo crear la orden. Inténtalo de nuevo más tarde.',
+            });
+        }
+
+        // Responder con éxito
+        return res.status(201).json({
+            message: 'Orden creada exitosamente.',
+            status: 201,
+            data: createdOrder, // Devolver la orden creada en la respuesta
+        });
+
+    } catch (error) {
+        // Manejo de errores generales
+        console.error('Error inesperado al crear la orden:', error);
+        return res.status(500).json({
+            message: 'Error interno del servidor al crear la orden.'
+        });
+    }
+};
+
 
 // Obtener todos los productos
 export const getAllProducts = async (req, res) => {
     try {
-        const token = req.cookies?.sessionToken;
+        /* const token = req.cookies?.sessionToken;
 
         if (!token) {
             return res.status(401).json({ error: 'No autorizado' });
         }
 
         // Decodificar el token
-        const decoded = jwt.verify(token, process.env.JWT_SECRET);
-        const products = await productService.getAllProducts(decoded.id);
+        const decoded = jwt.verify(token, process.env.JWT_SECRET); */
+        const products = await productService.getAllProducts();
         console.log(products)
         res.status(200).json({ data: products });
     } catch (error) {
@@ -102,41 +217,126 @@ export const getProductById = async (req, res) => {
         res.status(500).json({ message: 'Error al obtener el producto' });
     }
 };
-export const getOnlyProductByIdd = async (req, res) => {
+
+export const getOnlyProductById = async (req, res) => {
     try {
+        // Capturar el ID del producto desde los parámetros de la URL
         const { id } = req.params;
-        console.log(id)
-        // Validación mejorada de los parámetros
+
+        // Capturar subCategory desde el cuerpo de la solicitud
+        const { subcategory } = req.body.parametros || {}; // Manejo de casos donde no se envíen parámetros
+
+        console.log("ID del producto:", id);
+        console.log("Subcategoría:", subcategory);
+
+        // Validaciones
         if (!id) {
-            return res.status(400).json({ message: 'Both id and idProduct are required' });
+            return res.status(400).json({ message: 'El ID del producto es requerido.' });
+        }
+        if (!subcategory) {
+            return res.status(400).json({ message: 'La subcategoría es requerida.' });
         }
 
-        const product = await productService.getOnlyProductById(id);
-        console.log(product);
-        if (!product) {
-            return res.status(404).json({ message: 'Producto no encontrado' });
+        // Obtener el producto y los relacionados
+        const result = await productService.getOnlyProductById(id, subcategory);
+
+        console.log("Producto y relacionados:", result);
+
+        if (!result.product) {
+            return res.status(404).json({ message: 'Producto no encontrado.' });
         }
 
-        return res.status(200).json({ success: true, data: product });
-
-
+        // Responder con éxito
+        return res.status(200).json({
+            success: true,
+            data: {
+                product: result.product,
+                relatedProducts: result.relatedProducts,
+            },
+        });
 
     } catch (error) {
         console.error('Error al obtener el producto:', error);
-        res.status(500).json({ message: 'Error al obtener el producto' });
+        return res.status(500).json({ message: 'Error al obtener el producto.' });
     }
 };
+
 
 // Actualizar un producto
 export const updateProduct = async (req, res) => {
     try {
+        const { body: data, files: archivos } = req;
+        const variantes = data.variantes || '[]';
+
+        if (!data || !variantes.length) {
+            return res.status(400).json({ message: 'Datos incompletos o archivos no enviados' });
+        }
+
+        // Asignar imágenes subidas a las variantes
+        variantes.forEach((variant, index) => {
+            const imagenCampo = `variantes[${index}][imagen]`;
+            const archivo = archivos.find(file => file.fieldname === imagenCampo);
+            if (archivo) {
+                variant.imagen = archivo.originalname
+                variant.path = archivo.path
+            }
+        });
+
+        // Subir imágenes a S3 si no existen
+        console.log("la data cruda es" + JSON.stringify(data))
+        console.log("la data de variantes es" + JSON.stringify(variantes))
+        await Promise.all(
+            variantes.map(async (variant, index) => {
+                const { imagen } = variant;
+                if (!imagen) return console.log(`No hay imagen para la variante ${index}`);
+
+                try {
+                    const imagenExiste = await getObjectFromS3(variant.originalname);
+                    if (imagenExiste !== null) {
+                        console.log(`La imagen de la variante ${index} ya existe en S3.`);
+                        return;
+                    }
+
+                    /*           console.log(`Subiendo imagen de la variante ${index} a S3...`);
+                */
+                    const subidaExitosa = await uploadFileToS3(variant);
+
+                    if (subidaExitosa) {
+                        /* console.log(`Imagen de la variante ${index} subida exitosamente.`); */
+                        // Actualizar la base de datos si es necesario
+                        const updatedProduct = await productService.saveImages(data);
+                        if (!updatedProduct) return res.status(404).json({ message: 'Producto no actualizado' });
+                        // await productService.updateVariantImage(variant.id, imagen.originalname);
+                    } else {
+                        console.error(`Error al subir la imagen de la variante ${index}.`);
+                    }
+                } catch (error) {
+                    console.error(`Error procesando la imagen de la variante ${index}:`, error);
+                }
+            })
+        );
+
+        // Aquí puedes realizar otras actualizaciones relacionadas con el producto
+        // Ejemplo:
+        // const updatedProduct = await productService.editProduct(data);
+        // if (!updatedProduct) return res.status(404).json({ message: 'Producto no actualizado' });
+
+        res.status(200).json({ message: 'Producto actualizado exitosamente', status: 200 });
+    } catch (error) {
+        console.error('Error al actualizar el producto:', error);
+        res.status(500).json({ message: 'Error al actualizar el producto' });
+    }
+};
+
+/* export const updateProduct = async (req, res) => {
+    try {
         const { editedRows } = req.body;  // Obtener el ID del producto desde la URL
         console.log(editedRows);
 
-        /*   const updatedProduct = await productService.editProduct(product._id, updateData);
+          const updatedProduct = await productService.editProduct(product._id, updateData);
           if (!updatedProduct) {
               return res.status(404).json({ message: 'Producto no actualizado' });
-          } */
+          } 
         res.status(200).json({
             message: 'Producto actualizado exitosamente',
             status: 200,
@@ -146,7 +346,7 @@ export const updateProduct = async (req, res) => {
         console.error('Error al actualizar el producto:', error);
         res.status(500).json({ message: 'Error al actualizar el producto' });
     }
-};
+}; */
 
 // Eliminar una imagen
 export const deleteImage = async (req, res) => {
@@ -247,14 +447,73 @@ export const getProductsByCategory = async (req, res) => {
         res.status(500).json({ message: 'Error al obtener los productos' });
     }
 };
-export const getProductsByProductType= async (req, res) => {
+export const obtenerDatosDeCategoriaElegida = async (req, res) => {
     try {
-     
+        const { productType, category } = req.body
+        console.log(productType, category)
+        const products = await productService.obtenerDatosDeCategoriaElegida(productType, category)
+
+        if (products.length > 0) {
+            console.log(products)
+            res.status(200).json({ data: products });
+        }
+
+    } catch (error) {
+        console.error('Error al obtener categorias:', error);
+        res.status(500).json({ message: 'Error al obtener los productos' });
+    }
+};
+export const getProductsByProductType = async (req, res) => {
+    try {
+
 
         const products = await productService.getProductsByProdType()
         console.log(products)
         if (products.length > 0) {
             res.status(200).json({ data: products });
+        }
+
+    } catch (error) {
+        console.error('Error al obtener categorias:', error);
+        res.status(500).json({ message: 'Error al obtener los productos' });
+    }
+};
+export const registersearch = async (req, res) => {
+    try {
+        const { query } = req.body
+
+        const products = await productService.rsearch(query)
+        console.log("Coincidencias: " + products)
+        if (products.length > 0) {
+            res.status(200).json({ data: products });
+        }
+
+    } catch (error) {
+        console.error('Error al obtener categorias:', error);
+        res.status(500).json({ message: 'Error al obtener los productos' });
+    }
+};
+export const deleteProd = async (req, res) => {
+    try {
+        const { id } = req.params
+
+        const products = await productService.deleteProdu(id)
+        if (products.acknowledged) {
+            res.status(200).json({ success: 200, message: 'Producto eliminado exitosamente' });
+        }
+
+    } catch (error) {
+        console.error('Error al obtener categorias:', error);
+        res.status(500).json({ message: 'Error al obtener los productos' });
+    }
+};
+export const getOrder = async (req, res) => {
+    try {
+
+        const orders = await oService.getOrderSimple()
+        if (orders.length > 0) {
+            console.log(orders)
+            res.status(200).json({ success: 200, data: orders });
         }
 
     } catch (error) {

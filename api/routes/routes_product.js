@@ -2,7 +2,7 @@ import express from 'express';
 import multer from 'multer';
 import path from 'path';
 const router = express.Router();
-import { createProduct, getAllProducts, getOnlyProductByIdd,getProductsByProductType, getProductById, updateProduct ,deleteImage, getAllImagesOfProducts,uploadImageToProduct, getSuppliers, getProductsByCategory} from '../controllers/product_controller.js';
+import { createProduct, getAllProducts,registersearch, getOnlyProductById,obtenerDatosDeCategoriaElegida,getProductsByProductType, getProductById, updateProduct ,deleteImage, getAllImagesOfProducts,uploadImageToProduct, getSuppliers, getProductsByCategory, deleteProd, createSimpleOrder, getOrder} from '../controllers/product_controller.js';
 /* import checkPermission from '../middlewares/checkPermission.js';
  */
 const storage = multer.diskStorage({
@@ -19,16 +19,21 @@ const upload = multer({ storage });
 /* router.post('/', authenticate,  checkPermission('create_product'),  createProduct);
  */
 // Obtener todos los productos
-router.get('/get-product-by-id/:id', getOnlyProductByIdd);
+router.post('/get-product-by-id/:id', getOnlyProductById);
+router.post('/orders', createSimpleOrder);
+router.get('/getorders', getOrder);
 router.get('/products', getAllProducts);
 router.get('/get-suppliers', getSuppliers);
 router.get('/all-images', getAllImagesOfProducts);
 router.get('/productsbyproductstype', getProductsByProductType);
-router.post('/save-edits', updateProduct);
-router.post('/add-product', upload.array("images"), createProduct);
+router.put('/save-edits', upload.any(), updateProduct);
+router.post('/add-product', upload.any(), createProduct);
 router.post('/editimage', deleteImage);
 router.post('/edit_product/:id', updateProduct);
 router.post('/productsbycategory', getProductsByCategory);
+router.post('/obtenerdatosdecategoriaelegida', obtenerDatosDeCategoriaElegida);
+router.post('/registersearch', registersearch);
+router.delete('/deleteproduct/:id', deleteProd);
 
 router.post('/upload-product-image', upload.array("image"), uploadImageToProduct);
 

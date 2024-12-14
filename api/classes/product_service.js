@@ -7,14 +7,8 @@ class ProductService {
         this.collection = clientDB.db("tienda").collection('product'); // Nombre de la colección de usuarios
     }
 
-    async getAllProducts(id) {
-        return this.collection.aggregate([
-            {
-                $match: {
-                    user_id: new ObjectId(id)
-                }
-            }
-        ]).toArray();
+    async getAllProducts() {
+        return this.collection.find().toArray();
     }
     /*     async getAllProducts() {
             return this.collection.aggregate([
@@ -47,9 +41,18 @@ class ProductService {
         ]).toArray();
     }
 
-    async getOnlyProductById(productId) {
-        return this.collection.find({ _id: new ObjectId(productId) }).toArray();
+    /*   async getOnlyProductById(productId, category, subCategory) {
+          return this.collection.find({ _id: new ObjectId(productId) }).toArray();
+      } */
+    async getOnlyProductById(productId, subCategory) {
+        const product = await this.collection.find({ _id: new ObjectId(productId) }).toArray();
+        const relatedProducts = await this.collection.find({ categoria: subCategory }).toArray();
+
+        return { product, relatedProducts };
     }
+ 
+
+
 
     async getProductById(productId) {
         return this.collection.aggregate([
@@ -87,6 +90,9 @@ class ProductService {
     async getProductByIdForUpdate(id) {
         return this.collection.collection("product").findOne({ _id: new ObjectId(id) });
     }
+    async deleteProdu(id) {
+        return this.collection.deleteOne({ _id: new ObjectId(id) });
+    }
 
 
 
@@ -98,6 +104,36 @@ class ProductService {
             }
         ]).toArray();
     }
+
+    async obtenerDatosDeCategoriaElegida(p, c) {
+
+        return this.collection.aggregate([
+            {
+                $match: { categoria: c, productoTipo: p }
+            }
+        ]).toArray();
+    }
+    async rsearch(q) {
+        return this.collection.aggregate([
+            {
+                $match: {
+                    titulo: {
+                        $regex: q,
+                        $options: "i", // Insensible a mayúsculas/minúsculas
+                    },
+                },
+            },
+            {
+                $project: {
+                    titulo: 1, // Incluir el campo título
+                    productoTipo: 1, // Incluir el campo productoTipo
+                    categoria: 1, // Incluir el campo categoria
+                    variantes: 1
+                },
+            },
+        ]).toArray();
+    }
+
     async getProductsByProdType() {
         try {
             const results = await this.collection.aggregate([
@@ -115,7 +151,7 @@ class ProductService {
                     }
                 }
             ]).toArray();
-    console.log(results)
+            console.log(results)
             return results;
         } catch (error) {
             console.error("Error fetching products and categories:", error);
@@ -137,13 +173,69 @@ class ProductService {
 
 
 
-    async editProduct(productId, updateData) {
+    async editProduct(product) {
+        // Extraemos el `_id` del producto y eliminamos este campo del objeto `updateData`
+        const { id, ...updateData } = product;
+
+        // Realizamos la operación de actualización usando `$set`
         const productUpdate = await this.collection.updateOne(
-            { _id: new ObjectId(productId) },
-            { $set: updateData }
+            { _id: new ObjectId(id) }, // Filtrar por el ID del producto
+            { $set: updateData } // Solo actualizamos los campos enviados
         );
-        return productUpdate
+
+        // Retornamos el resultado de la operación
+        return productUpdate;
     }
+    async saveImages(data) {
+        try {
+            // Validar que los parámetros sean válidos
+            if (!data) {
+                throw new Error('Parámetros insuficientes');
+            }
+
+            // Actualizar solo la imagen de la variante específica
+            const updateQuery = {
+                titulo: data.titulo,
+                descripcion: data.descripcion,
+                productoTipo: data.productoTipo,
+                categoria: data.categoria,
+                variantes: data.variantes.map(variant => ({
+                    color: variant.color,
+                    imagen: variant.imagen,
+                    peso: variant.peso
+                }))
+            };
+
+            console.log(updateQuery)
+            const productUpdate = await this.collection.updateOne(
+                { _id: new ObjectId(data.id) }, // Filtrar por ID del producto
+                {
+                    $set: updateQuery, // Solo actualizar los campos proporcionados
+                }
+            );
+
+            if (productUpdate.matchedCount === 0) {
+                console.warn(`No se encontró el producto con ID: ${productId}`);
+                return null; // Indicar que no se encontró el producto
+            }
+
+
+            return productUpdate;
+        } catch (error) {
+            console.error('Error actualizando la imagen de la variante:', error);
+            throw error; // Propagar el error para manejarlo en el flujo superior
+        }
+    }
+
+
+
+    /*  async editProduct(productId, updateData) {
+         const productUpdate = await this.collection.updateOne(
+             { _id: new ObjectId(productId) },
+             { $set: updateData }
+         );
+         return productUpdate
+     } */
     async deleteImageOfProduct(productId, image) {
 
         const productUpdate = await this.collection.updateOne(
