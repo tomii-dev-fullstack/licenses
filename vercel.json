@@ -23,7 +23,7 @@
                 "OPTIONS"
             ],
             "headers": {
-                "Access-Control-Allow-Origin": "https://ecommerce-gabriela.vercel.app",
+                "Access-Control-Allow-Origin": ["https://ecommerce-gabriela.vercel.app", "https://dashboard-gabiela.vercel.app"],
                 "Access-Control-Allow-Credentials": "true"
             }
         }
