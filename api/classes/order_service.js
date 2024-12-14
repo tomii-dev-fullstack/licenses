@@ -15,6 +15,10 @@ class OrderService {
         return this.collection.find().toArray();
 
     }
+    async getOrderSimpleId(id) {
+        return this.collection.find({ _id: new ObjectId(id) }).toArray();
+
+    }
 
     async createOrder(jsonResponse, decoded) {
         // Verificar si el usuario ya existe

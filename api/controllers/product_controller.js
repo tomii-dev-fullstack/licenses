@@ -521,3 +521,17 @@ export const getOrder = async (req, res) => {
         res.status(500).json({ message: 'Error al obtener los productos' });
     }
 };
+export const getOrderbyid = async (req, res) => {
+    try {
+        const { id } = req.params
+        const orders = await oService.getOrderSimpleId(id)
+        if (orders.length > 0) {
+            console.log(orders)
+            res.status(200).json({ success: 200, data: orders });
+        }
+
+    } catch (error) {
+        console.error('Error al obtener categorias:', error);
+        res.status(500).json({ message: 'Error al obtener los productos' });
+    }
+};
