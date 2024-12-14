@@ -217,6 +217,30 @@ export const getProductById = async (req, res) => {
         res.status(500).json({ message: 'Error al obtener el producto' });
     }
 };
+export const gProductForEdit = async (req, res) => {
+    try {
+        const { id } = req.params;
+        console.log(id)
+        // Validación mejorada de los parámetros
+        if (!id) {
+            return res.status(400).json({ message: 'Both id and idProduct are required' });
+        }
+
+        const product = await productService.gProductById(id);
+        if (!product) {
+            return res.status(404).json({ message: 'Producto no encontrado' });
+        }
+        if (product.length > 0) {
+            return res.status(200).json({ data: product[0] });
+        } else {
+            return res.status(404).json({ message: 'No products found for the given ID' });
+        }
+
+    } catch (error) {
+        console.error('Error al obtener el producto:', error);
+        res.status(500).json({ message: 'Error al obtener el producto' });
+    }
+};
 
 export const getOnlyProductById = async (req, res) => {
     try {

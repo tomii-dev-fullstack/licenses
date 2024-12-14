@@ -50,7 +50,11 @@ class ProductService {
 
         return { product, relatedProducts };
     }
- 
+
+    async gProductById(id) {
+        return await this.collection.find({ _id: new ObjectId(id) }).toArray();
+    }
+
 
 
 
@@ -129,7 +133,7 @@ class ProductService {
                     productoTipo: 1, // Incluir el campo productoTipo
                     categoria: 1, // Incluir el campo categoria
                     variantes: 1,
-                    precio:1
+                    precio: 1
                 },
             },
         ]).toArray();
