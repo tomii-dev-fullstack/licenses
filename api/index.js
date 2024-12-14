@@ -14,7 +14,7 @@ import cookieParser from "cookie-parser";
 config();
 
 const app = express();
-app.use(cors({ origin: ["https://ecommerce-gabriela.vercel.app","https://dashboard-gabiela.vercel.app", "http://localhost:3000","http://localhost:5173"], methods: "GET, POST, PUT, DELETE", credentials: true }));
+app.use(cors({ origin: ["*"], methods: "GET, POST, PUT, DELETE", credentials: true }));
 /* app.options('*', cors()); */
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
