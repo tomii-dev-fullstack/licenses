@@ -133,7 +133,8 @@ class ProductService {
                     productoTipo: 1, // Incluir el campo productoTipo
                     categoria: 1, // Incluir el campo categoria
                     variantes: 1,
-                    precio: 1
+                    precio: 1,
+                    imagenes: 1
                 },
             },
         ]).toArray();
