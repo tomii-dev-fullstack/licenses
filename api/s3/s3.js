@@ -19,14 +19,15 @@ const client = new S3Client({
     }
 });
 
-export const uploadFileToS3 = async (file/* , product */) => {
-   /*  console.log(`Archivo: ${file}`); */
+export const uploadFileToS3 = async (file, data/* , product */) => {
+    /*  console.log(`Archivo: ${file}`); */
     try {
-       /*  console.log(file); */
+        console.log("archivos" + JSON.stringify(file), data);
         const stream = fs.createReadStream(file.path);
+        const key = file.originalname ? `${data}/${file.originalname}` : `${data}/${file.imagen}`;
         const uploadParams = {
             Bucket: process.env.AWS_BUCKET_NAME,
-            Key: `${file.imagen}`,
+            Key: key,
             Body: stream,
             ACL: 'public-read',
         };

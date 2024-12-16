@@ -12,6 +12,122 @@ const oService = new OrderService();
 export const createProduct = async (req, res) => {
     try {
         const { body: data, files: archivos } = req;
+        console.log(data);
+        // Validar datos básicos
+        if (!data || !data.titulo || !data.productoTipo || !data.categoria) {
+            return res.status(400).json({ message: 'Datos incompletos en el cuerpo de la solicitud.' });
+        }
+
+        // Parsear las variantes e imágenes del body
+        const variantes = data.variantes || '[]'; // Variantes como JSON
+        const imagenesGenerales = archivos.filter(file => file.fieldname.startsWith('imagenes')); // Imágenes generales
+
+        // Validar si el producto es único o tiene variantes
+        const esProductoConVariantes = variantes.length > 0;
+
+        if (esProductoConVariantes) {
+            // Validar que todas las variantes tengan datos completos
+            for (let variant of variantes) {
+                if (!variant.color || !variant.peso) {
+                    return res.status(400).json({ message: 'Datos incompletos en una o más variantes.' });
+                }
+            }
+            console.log(variantes)
+            // Asignar imágenes subidas a las variantes
+            variantes.forEach((variant, index) => {
+                const imagenCampo = `variantes[${index}][imagen]`;
+                const archivo = archivos.find(file => file.fieldname === imagenCampo);
+                if (archivo) {
+                    variant.imagen = archivo.originalname;
+                    variant.path = archivo.path;
+                }
+            });
+
+        } else {
+            // Validar que existan imágenes generales si no hay variantes
+            if (imagenesGenerales.length === 0) {
+                return res.status(400).json({ message: 'Se requieren imágenes para un producto sin variantes.' });
+            }
+        }
+
+        // Preparar el objeto del producto
+        const product = {
+            creado: new Date(),
+            titulo: data.titulo,
+            descripcion: data.descripcion,
+            productoTipo: data.productoTipo,
+            categoria: data.categoria,
+            imagenes: esProductoConVariantes ? [] : imagenesGenerales.map(file => ({
+                nombre: file.originalname,
+                /*   imagen: file.path */
+            })),
+            estado: true,
+            variantes: esProductoConVariantes ? variantes.map(variant => ({
+                color: variant.color,
+                imagen: variant.imagen,
+                peso: variant.peso
+            })) : []
+        };
+
+        // Subir imágenes de variantes (si las hay)
+        if (esProductoConVariantes) {
+            await Promise.all(
+                variantes.map(async (variant, index) => {
+                    if (variant.imagen && variant.path) {
+                        try {
+                            const subidaExitosa = await uploadFileToS3(variant, data.productoTipo);
+                            if (!subidaExitosa) {
+                                console.error(`Error al subir la imagen de la variante ${index}`);
+                            } else {
+                                console.log(`Imagen de la variante ${index} subida exitosamente.`);
+                            }
+                        } catch (error) {
+                            console.error(`Error al subir la imagen de la variante ${index}:`, error);
+                        }
+                    }
+                })
+            );
+        }
+
+        // Subir imágenes generales (si no hay variantes)
+        if (!esProductoConVariantes) {
+            console.log(imagenesGenerales)
+            await Promise.all(
+                imagenesGenerales.map(async (file, index) => {
+                    try {
+                        const subidaExitosa = await uploadFileToS3(file, data.productoTipo);
+                        if (!subidaExitosa) {
+                            console.error(`Error al subir la imagen general ${index}`);
+                        } else {
+                            console.log(`Imagen general ${index} subida exitosamente.`);
+                        }
+                    } catch (error) {
+                        console.error(`Error al subir la imagen general ${index}:`, error);
+                    }
+                })
+            );
+        }
+
+        // Crear producto en la base de datos
+        const createdProduct = await productService.createProduct(product);
+        if (!createdProduct) {
+            return res.status(500).json({ message: 'Error al guardar el producto en la base de datos.' });
+        } 
+
+        // Responder con éxito
+        res.status(200).json({
+            message: 'Producto creado exitosamente',
+         /*    producto: createdProduct */
+        });
+    } catch (error) {
+        console.error('Error al crear el producto:', error);
+        res.status(500).json({ message: 'Error interno al crear el producto.' });
+    }
+};
+
+/* export const createProduct = async (req, res) => {
+    try {
+        const { body: data, files: archivos } = req;
         const variantes = data.variantes || '[]';
 
         if (!data || !variantes.length) {
@@ -84,7 +200,7 @@ export const createProduct = async (req, res) => {
         console.error('Error al crear el producto:', error);
         res.status(500).json({ message: 'Error al crear el producto' });
     }
-};
+}; */
 export const createSimpleOrder = async (req, res) => {
     try {
         const { payload } = req.body;
