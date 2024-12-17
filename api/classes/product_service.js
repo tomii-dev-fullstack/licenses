@@ -45,6 +45,7 @@ class ProductService {
           return this.collection.find({ _id: new ObjectId(productId) }).toArray();
       } */
     async getOnlyProductById(productId, subCategory) {
+        console.log(productId, subCategory);
         const product = await this.collection.find({ _id: new ObjectId(productId) }).toArray();
         const relatedProducts = await this.collection.find({ categoria: subCategory }).toArray();
 
@@ -169,11 +170,21 @@ class ProductService {
         try {
             // Accede directamente a la colección de productos desde `this.collection`
             const suppliers = await this.collection.distinct("categoria");
-            console.log(suppliers)
-            return suppliers;
+          
+            return  suppliers;
         } catch (error) {
             console.error('Error fetching suppliers:', error);
             throw new Error('Could not fetch suppliers');
+        }
+    }
+    async getDestacados() {
+        try {
+            // Accede directamente a la colección de productos desde `this.collection`
+            const destacados = this.collection.find({ destacado: true }).toArray();
+            return  destacados;
+        } catch (error) {
+            console.error('Error fetching destacados:', error);
+            throw new Error('Could not fetch destacados');
         }
     }
 

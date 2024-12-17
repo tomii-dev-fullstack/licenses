@@ -4,9 +4,13 @@ import { deleteFileFromS3, getObjectFromS3, uploadFileToS3 } from "../s3/s3.js"
 import jwt from "jsonwebtoken"
 import UserService from '../classes/user_service.js';
 import OrderService from '../classes/order_service.js';
+import { Payment, Preference, MercadoPagoConfig } from 'mercadopago';
 const productService = new ProductService();
 const oService = new OrderService();
+// SDK de Mercado Pago
+// Agrega credenciales
 
+const clientMP = new MercadoPagoConfig({ accessToken: 'APP_USR-6666012562184757-121615-07b1f0e92942a7caff5c29f2adfaf100-1187609678' });
 
 
 export const createProduct = async (req, res) => {
@@ -112,12 +116,12 @@ export const createProduct = async (req, res) => {
         const createdProduct = await productService.createProduct(product);
         if (!createdProduct) {
             return res.status(500).json({ message: 'Error al guardar el producto en la base de datos.' });
-        } 
+        }
 
         // Responder con éxito
         res.status(200).json({
             message: 'Producto creado exitosamente',
-         /*    producto: createdProduct */
+            /*    producto: createdProduct */
         });
     } catch (error) {
         console.error('Error al crear el producto:', error);
@@ -206,38 +210,38 @@ export const createSimpleOrder = async (req, res) => {
         const { payload } = req.body;
         console.log(payload);
         // Validación inicial de los datos enviados
-        if (
-            !payload ||
-            !payload.items || payload.items.length === 0 ||
-            !payload.totalAmount || isNaN(payload.totalAmount) ||
-            !payload.subtotal || isNaN(payload.subtotal) ||
-            payload.discountAmount === undefined || isNaN(payload.discountAmount) ||
-            !payload.fullName || payload.fullName === "" ||
-            !payload.deliveryOption || payload.deliveryOption === "" ||
-            !payload.address || payload.address === "" ||
-            !payload.city || payload.city === "" ||
-            !payload.postalCode || payload.postalCode === "" ||
-            !payload.phone || payload.phone === "" ||
-            !payload.email || !/^[\w.-]+@[a-zA-Z\d.-]+\.[a-zA-Z]{2,}$/.test(payload.email) // Validación básica de email
-        ) {
-            return res.status(400).json({
-                message: 'Datos incompletos o inválidos: asegúrate de llenar todos los campos requeridos correctamente.',
-                errors: {
-                    items: payload.items && payload.items.length > 0 ? null : "Se requieren items en el carrito.",
-                    totalAmount: !isNaN(payload.totalAmount) ? null : "totalAmount debe ser un número válido.",
-                    subtotal: !isNaN(payload.subtotal) ? null : "subtotal debe ser un número válido.",
-                    discountAmount: !isNaN(payload.discountAmount) ? null : "discountAmount debe ser un número válido.",
-                    fullName: payload.fullName && payload.fullName ? null : "fullName es obligatorio.",
-                    deliveryOption: payload.deliveryOption && payload.deliveryOption ? null : "deliveryOption es obligatorio.",
-                    address: payload.address && payload.address ? null : "address es obligatorio.",
-                    city: payload.city && payload.city ? null : "city es obligatorio.",
-                    postalCode: payload.postalCode && payload.postalCode ? null : "postalCode es obligatorio.",
-                    phone: payload.phone && payload.phone ? null : "phone es obligatorio.",
-                    email: /^[\w.-]+@[a-zA-Z\d.-]+\.[a-zA-Z]{2,}$/.test(payload.email) ? null : "email debe ser válido."
-                }
-            });
-        }
-
+       /*   if (
+             !payload ||
+             !payload.items || payload.items.length === 0 ||
+             !payload.totalAmount || isNaN(payload.totalAmount) ||
+             !payload.subtotal || isNaN(payload.subtotal) ||
+             payload.discountAmount === undefined || isNaN(payload.discountAmount) ||
+             !payload.fullName || payload.fullName === "" ||
+             !payload.deliveryOption || payload.deliveryOption === "" ||
+             !payload.address || payload.address === "" ||
+             !payload.city || payload.city === "" ||
+             !payload.postalCode || payload.postalCode === "" ||
+             !payload.phone || payload.phone === "" ||
+             !payload.email || !/^[\w.-]+@[a-zA-Z\d.-]+\.[a-zA-Z]{2,}$/.test(payload.email) // Validación básica de email
+         ) {
+             return res.status(400).json({
+                 message: 'Datos incompletos o inválidos: asegúrate de llenar todos los campos requeridos correctamente.',
+                 errors: {
+                     items: payload.items && payload.items.length > 0 ? null : "Se requieren items en el carrito.",
+                     totalAmount: !isNaN(payload.totalAmount) ? null : "totalAmount debe ser un número válido.",
+                     subtotal: !isNaN(payload.subtotal) ? null : "subtotal debe ser un número válido.",
+                     discountAmount: !isNaN(payload.discountAmount) ? null : "discountAmount debe ser un número válido.",
+                     fullName: payload.fullName && payload.fullName ? null : "fullName es obligatorio.",
+                     deliveryOption: payload.deliveryOption && payload.deliveryOption ? null : "deliveryOption es obligatorio.",
+                     address: payload.address && payload.address ? null : "address es obligatorio.",
+                     city: payload.city && payload.city ? null : "city es obligatorio.",
+                     postalCode: payload.postalCode && payload.postalCode ? null : "postalCode es obligatorio.",
+                     phone: payload.phone && payload.phone ? null : "phone es obligatorio.",
+                     email: /^[\w.-]+@[a-zA-Z\d.-]+\.[a-zA-Z]{2,}$/.test(payload.email) ? null : "email debe ser válido."
+                 }
+             });
+         } 
+ */
         // Construcción de la orden
         const order = {
             fullName: payload.fullName,
@@ -257,25 +261,69 @@ export const createSimpleOrder = async (req, res) => {
             createdAt: new Date(), // Marca de tiempo para la orden
         };
 
-        console.log('Orden a crear:', order);
+        if (payload.paymentMethod === "mp") {
 
-        // Crear la orden en la base de datos
+            const payment = new Preference(clientMP);
+
+            payment.create({
+                body: {
+                    items: payload.items.map(item => ({
+                        title: item.titulo || "Producto sin título", // Ajusta según la estructura de tu carrito
+                        quantity: item.cantidad || 1,
+                        unit_price: item.precio || 0, // Ajusta para el precio
+                    })),
+                }
+            })
+                .then(async (response) => {
+                    try {
+                        // Extraer el sandbox_init_point
+                        const sandbox_init_point = response.sandbox_init_point;
+                        console.log('Sandbox Init Point:', sandbox_init_point);
+
+                        // Crear la orden en la base de datos
+                        const createdOrder = await oService.createOrdenOne(order);
+                        if (!createdOrder) {
+                            console.error('Error al crear la orden en la base de datos');
+                            return res.status(500).json({
+                                message: 'No se pudo crear la orden. Inténtalo de nuevo más tarde.',
+                            });
+                        }
+
+                        // Responder con el sandbox_init_point o realizar otra acción
+                        return res.status(200).json({
+                            message: 'Orden creada con éxito.',
+                            sandbox_init_point: sandbox_init_point,
+                        });
+                    } catch (error) {
+                        console.error('Error al procesar la creación de la orden:', error);
+                        return res.status(500).json({
+                            message: 'Hubo un problema al crear la orden.',
+                        });
+                    }
+                })
+                .catch((error) => {
+                    console.error('Error al crear el pago:', error);
+                    return res.status(500).json({
+                        message: 'Hubo un problema al procesar el pago.',
+                    });
+                });
+        }
+
         const createdOrder = await oService.createOrdenOne(order);
-
-        // Validar si la orden fue creada exitosamente
         if (!createdOrder) {
             console.error('Error al crear la orden en la base de datos');
             return res.status(500).json({
                 message: 'No se pudo crear la orden. Inténtalo de nuevo más tarde.',
             });
         }
+        // Crear la orden en la base de datos
+        /* const createdOrder = await oService.createOrdenOne(order);
+
+    // Validar si la orden fue creada exitosamente
+    */
 
         // Responder con éxito
-        return res.status(201).json({
-            message: 'Orden creada exitosamente.',
-            status: 201,
-            data: createdOrder, // Devolver la orden creada en la respuesta
-        });
+
 
     } catch (error) {
         // Manejo de errores generales
@@ -563,6 +611,20 @@ export const getSuppliers = async (req, res) => {
 
         const products = await productService.getSuppliers()
 
+        if (products.length > 0) {
+            res.status(200).json({ data: products });
+        }
+
+    } catch (error) {
+        console.error('Error al obtener categorias:', error);
+        res.status(500).json({ message: 'Error al obtener los productos' });
+    }
+};
+export const getDestacados = async (req, res) => {
+    try {
+
+        const products = await productService.getDestacados()
+        console.log(products)
         if (products.length > 0) {
             res.status(200).json({ data: products });
         }
