@@ -18,13 +18,14 @@ const client = new S3Client({
         secretAccessKey: process.env.AWS_SECRET_KEY,
     }
 });
+//v   pt      c                    
 
-export const uploadFileToS3 = async (file, data/* , product */) => {
-    /*  console.log(`Archivo: ${file}`); */
+export const uploadFileToS3 = async (file, data, categoria/* , product */) => {
+
     try {
-        console.log("archivos" + JSON.stringify(file), data);
+
         const stream = fs.createReadStream(file.path);
-        const key = file.originalname ? `${data}/${file.originalname}` : `${data}/${file.imagen}`;
+        const key = file.originalname ? `${data.toLowerCase()}/${categoria.toLowerCase()}/${file.originalname.toLowerCase()}` : `${data.toLowerCase()}/${categoria.toLowerCase()}/${file.imagen.toLowerCase()}`;
         const uploadParams = {
             Bucket: process.env.AWS_BUCKET_NAME,
             Key: key,
@@ -40,7 +41,7 @@ export const uploadFileToS3 = async (file, data/* , product */) => {
         throw error;
     }
 };
-export const getObjectFromS3 = async (/* product,  */file) => {
+export const getObjectFromS3 = async (product, categoria, file) => {
     console.log(`Archivo: ${file}`);
     try {
         // Validar parámetros de entrada
@@ -50,7 +51,7 @@ export const getObjectFromS3 = async (/* product,  */file) => {
         }
 
         // Generar la clave S3 para la imagen
-        const s3Key = `${file}`;
+        const s3Key = `${product}/${categoria}/${file}`;
         console.log(`Buscando imagen en S3 con clave: ${s3Key}`);
 
         // Configurar los parámetros de obtención
@@ -120,7 +121,24 @@ export const uploadFileServiceToS3 = async (file, user, service_name) => {
         throw error;
     }
 };
-export const deleteFileFromS3 = async (file, user, product) => {
+export const deleteFileFromS3 = async (nombre, product, categoria) => {
+    console.log(nombre, product, categoria)
+    try {
+
+        const uploadParams = {
+            Bucket: process.env.AWS_BUCKET_NAME,
+            Key: `${product}/${categoria}/${nombre}`,
+        };
+        const command = new DeleteObjectCommand(uploadParams);
+        const result = await client.send(command);
+        console.log('Archivo eliminado:', result);
+        return result;
+    } catch (error) {
+        console.error('Error al subir archivo:', error);
+        throw error;
+    }
+};
+/* export const deleteFileFromS3 = async (file, user, product) => {
     try {
 
         const uploadParams = {
@@ -136,3 +154,4 @@ export const deleteFileFromS3 = async (file, user, product) => {
         throw error;
     }
 };
+ */

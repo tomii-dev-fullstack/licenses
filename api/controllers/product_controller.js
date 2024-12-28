@@ -16,27 +16,30 @@ const clientMP = new MercadoPagoConfig({ accessToken: 'APP_USR-6666012562184757-
 export const createProduct = async (req, res) => {
     try {
         const { body: data, files: archivos } = req;
-        console.log(data);
         // Validar datos básicos
-        if (!data || !data.titulo || !data.productoTipo || !data.categoria) {
+
+        if (!data || !data.titulo || !data.productoTipo || !data.categoria || !data.stock || !data.productoConVariantes) {
             return res.status(400).json({ message: 'Datos incompletos en el cuerpo de la solicitud.' });
         }
-
         // Parsear las variantes e imágenes del body
         const variantes = data.variantes || '[]'; // Variantes como JSON
         const imagenesGenerales = archivos.filter(file => file.fieldname.startsWith('imagenes')); // Imágenes generales
 
-        // Validar si el producto es único o tiene variantes
-        const esProductoConVariantes = variantes.length > 0;
 
-        if (esProductoConVariantes) {
+        // Validar si el producto es único o tiene variantes
+        const esProductoConVariantes = data.productoConVariantes === "no" ? false : true;
+        /*  const esProductoConVariantes = variantes.length > 0; */
+
+
+        if (esProductoConVariantes === true) {
             // Validar que todas las variantes tengan datos completos
             for (let variant of variantes) {
-                if (!variant.color || !variant.peso) {
+                if (variant.dato_1_col === "" || variant.dato_2_mul === "" || variant.dato_3_pre === "" || variant.imagen === "") {
                     return res.status(400).json({ message: 'Datos incompletos en una o más variantes.' });
                 }
             }
-            console.log(variantes)
+
+
             // Asignar imágenes subidas a las variantes
             variantes.forEach((variant, index) => {
                 const imagenCampo = `variantes[${index}][imagen]`;
@@ -47,12 +50,12 @@ export const createProduct = async (req, res) => {
                 }
             });
 
-        } else {
+        } /* else {
             // Validar que existan imágenes generales si no hay variantes
             if (imagenesGenerales.length === 0) {
                 return res.status(400).json({ message: 'Se requieren imágenes para un producto sin variantes.' });
-            }
-        }
+                }
+                } */
 
         // Preparar el objeto del producto
         const product = {
@@ -61,25 +64,36 @@ export const createProduct = async (req, res) => {
             descripcion: data.descripcion,
             productoTipo: data.productoTipo,
             categoria: data.categoria,
-            imagenes: esProductoConVariantes ? [] : imagenesGenerales.map(file => ({
+            precio: Number(data.precio === 0) ? data.variantes[0].dato_3_pre : Number(data.precio),
+            productoConVariantes: data.productoConVariantes,
+            stock: Number(data.stock),
+            imagesAdded: esProductoConVariantes ? [] : imagenesGenerales.map(file => ({
                 nombre: file.originalname,
                 /*   imagen: file.path */
             })),
             estado: true,
             variantes: esProductoConVariantes ? variantes.map(variant => ({
-                color: variant.color,
+                _id: new ObjectId(),
+                dato_1_col: variant.dato_1_col,
+                dato_2_mul: variant.dato_2_mul,
+                dato_3_pre: Number(variant.dato_3_pre),
+                imagen: variant.imagen.toLowerCase()
+                /*   color: variant.color,
                 imagen: variant.imagen,
-                peso: variant.peso
+                peso: variant.peso */
             })) : []
         };
+
+
 
         // Subir imágenes de variantes (si las hay)
         if (esProductoConVariantes) {
             await Promise.all(
                 variantes.map(async (variant, index) => {
+
                     if (variant.imagen && variant.path) {
                         try {
-                            const subidaExitosa = await uploadFileToS3(variant, data.productoTipo);
+                            const subidaExitosa = await uploadFileToS3(variant, data.productoTipo, data.categoria);
                             if (!subidaExitosa) {
                                 console.error(`Error al subir la imagen de la variante ${index}`);
                             } else {
@@ -99,7 +113,7 @@ export const createProduct = async (req, res) => {
             await Promise.all(
                 imagenesGenerales.map(async (file, index) => {
                     try {
-                        const subidaExitosa = await uploadFileToS3(file, data.productoTipo);
+                        const subidaExitosa = await uploadFileToS3(file, data.productoTipo, data.categoria);
                         if (!subidaExitosa) {
                             console.error(`Error al subir la imagen general ${index}`);
                         } else {
@@ -210,38 +224,38 @@ export const createSimpleOrder = async (req, res) => {
         const { payload } = req.body;
         console.log(payload);
         // Validación inicial de los datos enviados
-       /*   if (
-             !payload ||
-             !payload.items || payload.items.length === 0 ||
-             !payload.totalAmount || isNaN(payload.totalAmount) ||
-             !payload.subtotal || isNaN(payload.subtotal) ||
-             payload.discountAmount === undefined || isNaN(payload.discountAmount) ||
-             !payload.fullName || payload.fullName === "" ||
-             !payload.deliveryOption || payload.deliveryOption === "" ||
-             !payload.address || payload.address === "" ||
-             !payload.city || payload.city === "" ||
-             !payload.postalCode || payload.postalCode === "" ||
-             !payload.phone || payload.phone === "" ||
-             !payload.email || !/^[\w.-]+@[a-zA-Z\d.-]+\.[a-zA-Z]{2,}$/.test(payload.email) // Validación básica de email
-         ) {
-             return res.status(400).json({
-                 message: 'Datos incompletos o inválidos: asegúrate de llenar todos los campos requeridos correctamente.',
-                 errors: {
-                     items: payload.items && payload.items.length > 0 ? null : "Se requieren items en el carrito.",
-                     totalAmount: !isNaN(payload.totalAmount) ? null : "totalAmount debe ser un número válido.",
-                     subtotal: !isNaN(payload.subtotal) ? null : "subtotal debe ser un número válido.",
-                     discountAmount: !isNaN(payload.discountAmount) ? null : "discountAmount debe ser un número válido.",
-                     fullName: payload.fullName && payload.fullName ? null : "fullName es obligatorio.",
-                     deliveryOption: payload.deliveryOption && payload.deliveryOption ? null : "deliveryOption es obligatorio.",
-                     address: payload.address && payload.address ? null : "address es obligatorio.",
-                     city: payload.city && payload.city ? null : "city es obligatorio.",
-                     postalCode: payload.postalCode && payload.postalCode ? null : "postalCode es obligatorio.",
-                     phone: payload.phone && payload.phone ? null : "phone es obligatorio.",
-                     email: /^[\w.-]+@[a-zA-Z\d.-]+\.[a-zA-Z]{2,}$/.test(payload.email) ? null : "email debe ser válido."
-                 }
-             });
-         } 
- */
+        /*   if (
+              !payload ||
+              !payload.items || payload.items.length === 0 ||
+              !payload.totalAmount || isNaN(payload.totalAmount) ||
+              !payload.subtotal || isNaN(payload.subtotal) ||
+              payload.discountAmount === undefined || isNaN(payload.discountAmount) ||
+              !payload.fullName || payload.fullName === "" ||
+              !payload.deliveryOption || payload.deliveryOption === "" ||
+              !payload.address || payload.address === "" ||
+              !payload.city || payload.city === "" ||
+              !payload.postalCode || payload.postalCode === "" ||
+              !payload.phone || payload.phone === "" ||
+              !payload.email || !/^[\w.-]+@[a-zA-Z\d.-]+\.[a-zA-Z]{2,}$/.test(payload.email) // Validación básica de email
+          ) {
+              return res.status(400).json({
+                  message: 'Datos incompletos o inválidos: asegúrate de llenar todos los campos requeridos correctamente.',
+                  errors: {
+                      items: payload.items && payload.items.length > 0 ? null : "Se requieren items en el carrito.",
+                      totalAmount: !isNaN(payload.totalAmount) ? null : "totalAmount debe ser un número válido.",
+                      subtotal: !isNaN(payload.subtotal) ? null : "subtotal debe ser un número válido.",
+                      discountAmount: !isNaN(payload.discountAmount) ? null : "discountAmount debe ser un número válido.",
+                      fullName: payload.fullName && payload.fullName ? null : "fullName es obligatorio.",
+                      deliveryOption: payload.deliveryOption && payload.deliveryOption ? null : "deliveryOption es obligatorio.",
+                      address: payload.address && payload.address ? null : "address es obligatorio.",
+                      city: payload.city && payload.city ? null : "city es obligatorio.",
+                      postalCode: payload.postalCode && payload.postalCode ? null : "postalCode es obligatorio.",
+                      phone: payload.phone && payload.phone ? null : "phone es obligatorio.",
+                      email: /^[\w.-]+@[a-zA-Z\d.-]+\.[a-zA-Z]{2,}$/.test(payload.email) ? null : "email debe ser válido."
+                  }
+              });
+          } 
+  */
         // Construcción de la orden
         const order = {
             fullName: payload.fullName,
@@ -265,29 +279,31 @@ export const createSimpleOrder = async (req, res) => {
 
             const payment = new Preference(clientMP);
 
+            const URL = "https://ecommerce-gabriela.vercel.app";
+            const URL_back = "http://localhost:3000";
+            /*   const URL = "https://ecommerce-gabriela.vercel.app"; */
             payment.create({
                 body: {
                     items: payload.items.map(item => ({
                         title: item.titulo || "Producto sin título", // Ajusta según la estructura de tu carrito
                         quantity: item.cantidad || 1,
-                        unit_price: item.precio || 0, // Ajusta para el precio
+                        unit_price: Number(item.precio) || 0, // Ajusta para el precio
                     })),
+                    auto_return: "approved",
+                    back_urls: {
+                        success: `${URL_back}`,
+                        failure: `${URL_back}`,
+                    },
+                    notification_url: `${URL}`,
                 }
             })
                 .then(async (response) => {
                     try {
                         // Extraer el sandbox_init_point
                         const sandbox_init_point = response.sandbox_init_point;
-                        console.log('Sandbox Init Point:', sandbox_init_point);
+                        console.log('Sandbox Init Point:', response);
 
-                        // Crear la orden en la base de datos
-                        const createdOrder = await oService.createOrdenOne(order);
-                        if (!createdOrder) {
-                            console.error('Error al crear la orden en la base de datos');
-                            return res.status(500).json({
-                                message: 'No se pudo crear la orden. Inténtalo de nuevo más tarde.',
-                            });
-                        }
+
 
                         // Responder con el sandbox_init_point o realizar otra acción
                         return res.status(200).json({
@@ -307,6 +323,15 @@ export const createSimpleOrder = async (req, res) => {
                         message: 'Hubo un problema al procesar el pago.',
                     });
                 });
+            /* const paymentDone = await payment.get({ preferenceId:    }); */
+            // Crear la orden en la base de datos
+            /*    const createdOrder = await oService.createOrdenOne(order);
+               if (!createdOrder) {
+                   console.error('Error al crear la orden en la base de datos');
+                   return res.status(500).json({
+                       message: 'No se pudo crear la orden. Inténtalo de nuevo más tarde.',
+                   });
+               } */
         }
 
         const createdOrder = await oService.createOrdenOne(order);
@@ -406,6 +431,11 @@ export const gProductForEdit = async (req, res) => {
     }
 };
 
+
+
+
+
+
 export const getOnlyProductById = async (req, res) => {
     try {
         // Capturar el ID del producto desde los parámetros de la URL
@@ -450,64 +480,196 @@ export const getOnlyProductById = async (req, res) => {
 };
 
 
+
+export const deleteimages = async (req, res) => {
+    try {
+        const { body: data, files: archivos } = req;
+        const imagenes = data.imagenes || '[]'
+        const cleanPath = (path) => (path ? path.replace(/\s+/g, "") : "default");
+        const productoTipoP = cleanPath(data.productoTipo).toLowerCase();
+        const categoriaC = cleanPath(data.categoria).toLowerCase();
+        // Verifica si los parámetros son vlidos
+        if (!productoTipoP || !categoriaC) {
+            console.error("Parámetros faltantes o inválidos");
+            return null; // Salta este producto
+        }
+
+
+
+        if (data.productoConVariantes === "no") {
+
+            //ELIMINAR IMAGEN
+            const imagenes = data.imagenes.map(file => ({
+                nombre: file,
+            }));
+            console.log(imagenes)
+            try {
+                await Promise.all(
+                    imagenes.map(async (imagen, index) => {
+                        const imagenExiste = await getObjectFromS3(imagen.nombre, productoTipoP, categoriaC);
+                        if (imagenExiste) {
+                            console.log(`La imagen ${imagen.nombre}  existe en S3.`);
+                            return;
+                        }
+
+                        console.log(`Eliminado imagen ${imagen} de S3...`);
+                        const eliminarExitoso = await deleteFileFromS3(imagen.nombre, productoTipoP, categoriaC);
+
+                        if (eliminarExitoso) {
+                            console.log(`Imagen ${imagen.nombre} eliminada exitosamente.`);
+                        }
+                    })
+                );
+
+                data.imagenes = imagenes.map(img => img);
+            } catch (error) {
+                console.error('Error procesando imágenes del producto único:', error);
+            }
+
+
+            for (const imagen of data.imagenes) {
+                const updatedProduct = await productService.deleteImageOfProduct(data.id, imagen.nombre);
+
+                if (!updatedProduct) {
+                    return res.status(404).json({ message: 'Imagen no eliminada' });
+                }
+            }
+        }
+
+        res.status(200).json({ message: 'Imagenes eliminadas exitosamente', status: 200 });
+    } catch (error) {
+        console.error('Error al eliminar:', error);
+        res.status(500).json({ message: 'Error al actualizar' });
+    }
+}
+
+
+
+
+
 // Actualizar un producto
 export const updateProduct = async (req, res) => {
     try {
         const { body: data, files: archivos } = req;
-        const variantes = data.variantes || '[]';
+        const variantes = data.variantes || '[]'
 
-        if (!data || !variantes.length) {
-            return res.status(400).json({ message: 'Datos incompletos o archivos no enviados' });
+        const productoConVariantes = data.productoConVariantes === 'si';
+        const cleanPath = (path) => (path ? path.replace(/\s+/g, "") : "default");
+        const productoTipoP = cleanPath(data.productoTipo).toLowerCase();
+        const categoriaC = cleanPath(data.categoria).toLowerCase();
+        // Verifica si los parámetros son vlidos
+        if (!productoTipoP || !categoriaC) {
+            console.error("Parámetros faltantes o inválidos");
+            return null; // Salta este producto
         }
 
-        // Asignar imágenes subidas a las variantes
-        variantes.forEach((variant, index) => {
-            const imagenCampo = `variantes[${index}][imagen]`;
-            const archivo = archivos.find(file => file.fieldname === imagenCampo);
-            if (archivo) {
-                variant.imagen = archivo.originalname
-                variant.path = archivo.path
-            }
-        });
 
-        // Subir imágenes a S3 si no existen
-        console.log("la data cruda es" + JSON.stringify(data))
-        console.log("la data de variantes es" + JSON.stringify(variantes))
-        await Promise.all(
-            variantes.map(async (variant, index) => {
-                const { imagen } = variant;
-                if (!imagen) return console.log(`No hay imagen para la variante ${index}`);
+        if (!data && !archivos.length) {
+            return res.status(400).json({ message: 'Datos incompletos o archivos no enviados' });
+        }
+        if (productoConVariantes) {
+            // Procesar variantes
+            await Promise.all(
+                variantes.map(async (variant, index) => {
+                    const imagenCampo = `variantes[${index}][imagen]`;
+                    const archivo = archivos.find(file => file.fieldname === imagenCampo);
 
-                try {
-                    const imagenExiste = await getObjectFromS3(variant.originalname);
-                    if (imagenExiste !== null) {
-                        console.log(`La imagen de la variante ${index} ya existe en S3.`);
+                    if (archivo) {
+                        variant.imagen = archivo.originalname;
+                        variant.path = archivo.path;
+                    }
+
+                    if (!variant.imagen) {
+                        console.log(`No hay imagen para la variante ${index}`);
                         return;
                     }
 
-                    /*           console.log(`Subiendo imagen de la variante ${index} a S3...`);
-                */
-                    const subidaExitosa = await uploadFileToS3(variant);
+                    try {
+                        const imagenExiste = await getObjectFromS3(variant.imagen, productoTipoP);
+                        if (imagenExiste) {
+                            console.log(`La imagen de la variante ${index} ya existe en S3.`);
+                            return;
+                        }
 
-                    if (subidaExitosa) {
-                        /* console.log(`Imagen de la variante ${index} subida exitosamente.`); */
-                        // Actualizar la base de datos si es necesario
-                        const updatedProduct = await productService.saveImages(data);
-                        if (!updatedProduct) return res.status(404).json({ message: 'Producto no actualizado' });
-                        // await productService.updateVariantImage(variant.id, imagen.originalname);
-                    } else {
-                        console.error(`Error al subir la imagen de la variante ${index}.`);
+                        console.log(`Subiendo imagen de la variante ${index} a S3...`);
+                        const subidaExitosa = await uploadFileToS3(variant, productoTipoP, categoriaC);
+
+                        if (subidaExitosa) {
+                            console.log(`Imagen de la variante ${index} subida exitosamente.`);
+                        }
+                    } catch (error) {
+                        console.error(`Error procesando la imagen de la variante ${index}:`, error);
                     }
-                } catch (error) {
-                    console.error(`Error procesando la imagen de la variante ${index}:`, error);
-                }
-            })
-        );
+                })
+            );
+        } else {
+            // Procesar producto único
+            if (archivos.length > 0) {
 
-        // Aquí puedes realizar otras actualizaciones relacionadas con el producto
-        // Ejemplo:
-        // const updatedProduct = await productService.editProduct(data);
-        // if (!updatedProduct) return res.status(404).json({ message: 'Producto no actualizado' });
+                const imagenes = archivos.map(file => ({
+                    originalname: file.originalname,
+                    path: file.path
+                }));
+
+                try {
+                    await Promise.all(
+                        imagenes.map(async (imagen, index) => {
+                            const imagenExiste = await getObjectFromS3(imagen.originalname, productoTipoP, categoriaC);
+                            if (imagenExiste) {
+                                console.log(`La imagen ${imagen.originalname} ya existe en S3.`);
+                                return;
+                            }
+
+                            console.log(`Subiendo imagen ${imagen.originalname} a S3...`);
+                            const subidaExitosa = await uploadFileToS3(imagen, productoTipoP, categoriaC);
+
+                            if (subidaExitosa) {
+                                console.log(`Imagen ${imagen.originalname} subida exitosamente.`);
+                            }
+                        })
+                    );
+
+                    data.imagenes = imagenes.map(img => img.originalname);
+                } catch (error) {
+                    console.error('Error procesando imágenes del producto único:', error);
+                }
+            }
+            else {
+                //ELIMINAR IMAGEN
+                const imagenes = data.imagenes.map(file => ({
+                    nombre: file,
+                }));
+                console.log(imagenes)
+                try {
+                    await Promise.all(
+                        imagenes.map(async (imagen, index) => {
+                            const imagenExiste = await getObjectFromS3(imagen.nombre, productoTipoP, categoriaC);
+                            if (imagenExiste) {
+                                console.log(`La imagen ${imagen.nombre}  existe en S3.`);
+                                return;
+                            }
+
+                            console.log(`Eliminado imagen ${imagen} de S3...`);
+                            const eliminarExitoso = await deleteFileFromS3(imagen.nombre, productoTipoP, categoriaC);
+
+                            if (eliminarExitoso) {
+                                console.log(`Imagen ${imagen.nombre} eliminada exitosamente.`);
+                            }
+                        })
+                    );
+
+                    data.imagenes = imagenes.map(img => img);
+                } catch (error) {
+                    console.error('Error procesando imágenes del producto único:', error);
+                }
+            }
+        }
+
+        // Actualizar la base de datos
+        const updatedProduct = await productService.saveImages(data);
+        if (!updatedProduct) {
+            return res.status(404).json({ message: 'Producto no actualizado' });
+        }
 
         res.status(200).json({ message: 'Producto actualizado exitosamente', status: 200 });
     } catch (error) {
@@ -515,6 +677,7 @@ export const updateProduct = async (req, res) => {
         res.status(500).json({ message: 'Error al actualizar el producto' });
     }
 };
+
 
 /* export const updateProduct = async (req, res) => {
     try {
@@ -735,5 +898,190 @@ export const getOrderbyid = async (req, res) => {
     } catch (error) {
         console.error('Error al obtener categorias:', error);
         res.status(500).json({ message: 'Error al obtener los productos' });
+    }
+};
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+export const deleteProduct = async (req, res) => {
+    try {
+        const { id } = req.params
+
+        const deleted = await productService.dProduct(id)
+        if (deleted.deletedCount === 1) {
+            console.log(deleted)
+            res.status(200).json({ success: 200, data: deleted });
+        }
+
+    } catch (error) {
+        console.error('Error al obtener categorias:', error);
+        res.status(500).json({ message: 'Error al obtener los productos' });
+    }
+};
+
+
+
+
+export const deleteImagep = async (req, res) => {
+    try {
+        const { body: data, files: archivos } = req;
+        console.log(data.imagesDeleted)
+        console.log(data.descripcion)
+        const cleanPath = (path) => (path ? path.replace(/\s+/g, "") : "default");
+        const productoTipoP = cleanPath(data.productoTipo).toLowerCase();
+        const categoriaC = cleanPath(data.categoria).toLowerCase();
+
+        if (!productoTipoP || !categoriaC) {
+            console.error("Parámetros faltantes o inválidos");
+            return res.status(400).json({ error: "Faltan parámetros obligatorios" });
+        }
+
+        if (data.productoConVariantes === "no") {
+            await manejarProductoSimple(data, archivos, productoTipoP, categoriaC);
+        } else {
+            await manejarProductoConVariantes(data, archivos, productoTipoP, categoriaC);
+        }
+
+        res.json({ message: "Producto actualizado exitosamente" });
+    } catch (error) {
+        console.error("Error actualizando el producto:", error);
+        res.status(500).json({ error: "Error al actualizar el producto" });
+    }
+};
+
+
+const manejarProductoSimple = async (data, archivos, productoTipoP, categoriaC) => {
+    if (archivos.length === 0 && !data.imagesDeleted) {
+        // Si no hay archivos, actualizamos el producto sin modificar las imágenes
+        await productService.upproduct(data);
+        console.log("No hay imágenes para subir. Producto actualizado.");
+        return;
+    }
+
+    // Procesamos los archivos recibidos y los preparamos para S3
+    const imagenes = archivos.map(file => ({
+        originalname: file.originalname,
+        path: file.path,
+    }));
+
+    try {
+        const resultados = await Promise.all(
+            imagenes.map(async (imagen) => {
+                console.log(`Subiendo imagen ${imagen.originalname} a S3...`);
+                const subidaExitosa = await uploadFileToS3(imagen, productoTipoP, categoriaC);
+                if (!subidaExitosa) {
+                    throw new Error(`Error subiendo imagen ${imagen.originalname}`);
+                }
+                return { nombre: imagen.originalname }; // Aquí agregamos el nombre de la imagen
+            })
+        );
+
+        // Actualizamos el campo `imagesAdded` con los resultados de las nuevas imágenes
+        if (resultados.length > 0) {
+            data.imagesAdded = data.imagesAdded ? [...data.imagesAdded, ...resultados] : resultados;
+        }
+
+        // Eliminar imágenes si se especificaron
+        if (data.imagesDeleted && data.imagesDeleted.length > 0) {
+
+
+            await productService.upproduct(data);
+        }
+
+        const e = await productService.upproduct(data);
+        console.log("Producto simple actualizado con nuevas imágenes.", e.modifiedCount);
+    } catch (error) {
+        console.error("Error procesando imágenes del producto simple:", error);
+        throw error;
+    }
+};
+
+
+const manejarProductoConVariantes = async (data, archivos, productoTipoP, categoriaC) => {
+    // Copiar datos del producto para evitar sobrescribir información importante
+    let variantes = data.variantes || [];
+
+    // Verificar si se proporcionaron archivos para variantes (imágenes)
+    if (archivos.length === 0 && !data.imagesDeleted) {
+        // Si no hay archivos, actualizamos solo los datos textuales y dejamos las variantes sin cambios
+        await productService.upproduct({
+            ...data,  // Mantener los datos originales del producto
+            variantes, // Mantener las variantes actuales sin cambios
+            imagenes: [], // No cambiar las imágenes generales del producto
+        });
+        console.log("Producto actualizado solo con datos textuales.");
+        return;
+    }
+
+    try {
+        // Procesamos las imágenes de las variantes y eliminamos las variantes sin imagen
+        const variantesActualizadas = await Promise.all(
+            variantes.map(async (variant, index) => {
+                const imagenCampo = `variantes[${index}][imagen]`;
+                const archivo = archivos.find(file => file.fieldname === imagenCampo);
+
+                if (archivo) {
+                    // Si se encuentra una imagen, la asignamos a la variante
+                    variant.imagen = archivo.originalname;
+                    variant.path = archivo.path;
+
+                    console.log(`Subiendo imagen de la variante ${index} (${variant.imagen}) a S3...`);
+                    const subidaExitosa = await uploadFileToS3(variant, productoTipoP, categoriaC);
+                    if (!subidaExitosa) {
+                        throw new Error(`Error subiendo imagen para la variante ${index}`);
+                    }
+                } else {
+                    console.warn(`No se encontró imagen para la variante ${index}`);
+                    // Si no hay imagen para esta variante, eliminamos la variante
+                    return null;  // Devolver null para variantes sin imagen
+                }
+
+                return variant;  // Devolver la variante con imagen
+            })
+        );
+
+        // Filtramos las variantes para eliminar las que no tienen imagen
+        variantes = variantesActualizadas.filter(variant => variant !== null);
+
+        // Si no hay variantes después del filtrado, devolvemos un error o mensaje adecuado
+        if (variantes.length === 0) {
+            throw new Error("No hay variantes válidas con imagen.");
+        }
+
+        // Actualizamos el campo `imagesAdded` con las nuevas imágenes
+        const nuevasImagenes = variantes.map(variant => ({
+            nombre: variant.imagen,
+        }));
+
+        data.imagesAdded = (data.imagesAdded || []).concat(nuevasImagenes);  // Concatenamos nuevas imágenes sin sobrescribir
+        console.log(data.imagesAdded); //
+        // Ahora actualizamos el producto manteniendo los datos textuales y otras propiedades
+        await productService.upproduct({
+            ...data,  // Mantener los datos originales del producto
+            variantes,  // Mantener las variantes actualizadas
+            // Agregar otros campos adicionales si se necesitan
+        });
+
+        console.log("Producto con variantes y datos textuales actualizado exitosamente.");
+    } catch (error) {
+        console.error("Error procesando imágenes de variantes:", error);
+        throw error;
     }
 };

@@ -2,7 +2,7 @@ import express from 'express';
 import multer from 'multer';
 import path from 'path';
 const router = express.Router();
-import { createProduct, getAllProducts,registersearch, getOnlyProductById,obtenerDatosDeCategoriaElegida,getProductsByProductType, getProductById, updateProduct ,deleteImage, getAllImagesOfProducts,uploadImageToProduct, getSuppliers, getProductsByCategory, deleteProd, createSimpleOrder, getOrder, getOrderbyid, gProductForEdit, getDestacados} from '../controllers/product_controller.js';
+import { createProduct, getAllProducts,registersearch, getOnlyProductById,obtenerDatosDeCategoriaElegida,getProductsByProductType, getProductById, updateProduct ,deleteImage, getAllImagesOfProducts,uploadImageToProduct, getSuppliers, getProductsByCategory, deleteProd, createSimpleOrder, getOrder, getOrderbyid, gProductForEdit, getDestacados, deleteimages, deleteImagep, deleteProduct} from '../controllers/product_controller.js';
 /* import checkPermission from '../middlewares/checkPermission.js';
  */
 const storage = multer.diskStorage({
@@ -11,6 +11,7 @@ const storage = multer.diskStorage({
     },
     filename: (req, file, cb) => {
         const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+        
         cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));  // Nombre único para evitar colisiones
     }
 });
@@ -30,6 +31,9 @@ router.get('/get-destacados', getDestacados);
 router.get('/all-images', getAllImagesOfProducts);
 router.get('/productsbyproductstype', getProductsByProductType);
 router.put('/save-edits', upload.any(), updateProduct);
+router.put('/update-product/:id', upload.any(), deleteImagep);
+router.delete('/delete-product/:id', deleteProduct);
+/* router.put('/deleteimage', upload.any(), deleteimages); */
 router.post('/add-product', upload.any(), createProduct);
 router.post('/editimage', deleteImage);
 router.post('/edit_product/:id', updateProduct);
