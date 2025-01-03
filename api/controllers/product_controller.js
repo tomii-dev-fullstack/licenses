@@ -72,15 +72,17 @@ export const createProduct = async (req, res) => {
                 /*   imagen: file.path */
             })),
             estado: true,
+            ventas: 0,
+            color: data.color ? data.color : "",
             variantes: esProductoConVariantes ? variantes.map(variant => ({
                 _id: new ObjectId(),
                 dato_1_col: variant.dato_1_col,
                 dato_2_mul: variant.dato_2_mul,
                 dato_3_pre: Number(variant.dato_3_pre),
-                imagen: variant.imagen.toLowerCase()
-                /*   color: variant.color,
-                imagen: variant.imagen,
-                peso: variant.peso */
+                imagen: variant.imagen.toLowerCase(),
+                color: variant.color,
+                /* imagen: variant.imagen,
+                 peso: variant.peso */
             })) : []
         };
 
@@ -262,19 +264,22 @@ export const createSimpleOrder = async (req, res) => {
             deliveryOption: payload.deliveryOption,
             address: payload.address,
             apartment: payload.apartment,
+            street_number: payload.street_number,
             city: payload.city,
             postalCode: payload.postalCode,
             phone: payload.phone,
+            paymentMethod: payload.paymentMethod,
             email: payload.email,
             notes: payload.notes,
-            paymentMethod: payload.paymentMethod,
+            paisesOptions: payload.paymentMethod,
             items: payload.items,
+            cupon_code: payload.cupon_code,
             totalAmount: payload.totalAmount,
             subtotal: payload.subtotal,
             discountAmount: payload.discountAmount,
             createdAt: new Date(), // Marca de tiempo para la orden
         };
-
+        console.log(order)
         if (payload.paymentMethod === "mp") {
 
             const payment = new Preference(clientMP);
@@ -285,9 +290,11 @@ export const createSimpleOrder = async (req, res) => {
             payment.create({
                 body: {
                     items: payload.items.map(item => ({
+                        id: item.id,
                         title: item.titulo || "Producto sin título", // Ajusta según la estructura de tu carrito
                         quantity: item.cantidad || 1,
                         unit_price: Number(item.precio) || 0, // Ajusta para el precio
+                        category_id: item.categoria,
                     })),
                     auto_return: "approved",
                     back_urls: {
@@ -295,6 +302,34 @@ export const createSimpleOrder = async (req, res) => {
                         failure: `${URL_back}`,
                     },
                     notification_url: `${URL}`,
+                    statement_descriptor: "Veterinaria La Comercial",
+                    payment_methods: {
+                        installments: 12
+                    },
+                    shipments: {
+                        receiver_address: {
+                            street_number: order.street_number,
+                            street_name: order.address,
+                            zip_code: order.postalCode,
+                            country_name: "Uruguay",
+                            apartment: order.apartment,
+                        },
+                        cost: 0,
+                        mode: order.deliveryOption
+                    },
+
+                    additional_info: order.notes,
+                    coupon_code: order.cupon_code,
+                    payer: {
+
+                        name: order.fullName,
+                        email: order.email,
+                        phone: {
+                            number: order.phone
+                        },
+                        date_created: new Date(),
+
+                    },
                 }
             })
                 .then(async (response) => {
@@ -323,31 +358,57 @@ export const createSimpleOrder = async (req, res) => {
                         message: 'Hubo un problema al procesar el pago.',
                     });
                 });
-            /* const paymentDone = await payment.get({ preferenceId:    }); */
-            // Crear la orden en la base de datos
-            /*    const createdOrder = await oService.createOrdenOne(order);
-               if (!createdOrder) {
-                   console.error('Error al crear la orden en la base de datos');
-                   return res.status(500).json({
-                       message: 'No se pudo crear la orden. Inténtalo de nuevo más tarde.',
-                   });
-               } */
+
+
+
         }
+        else {
 
-        const createdOrder = await oService.createOrdenOne(order);
-        if (!createdOrder) {
-            console.error('Error al crear la orden en la base de datos');
-            return res.status(500).json({
-                message: 'No se pudo crear la orden. Inténtalo de nuevo más tarde.',
-            });
+            const orderGeneral = {
+                items: payload.items.map(item => ({
+                    id: item.id,
+                    title: item.titulo || "Producto sin título", // Ajusta según la estructura de tu carrito
+                    quantity: item.cantidad || 1,
+                    unit_price: Number(item.precio) || 0, // Ajusta para el precio
+                    category_id: item.categoria,
+                })),
+
+
+                payment_method: order.paymentMethod,
+                shipments: {
+                    receiver_address: {
+                        street_number: order.street_number,
+                        street_name: order.address,
+                        zip_code: order.postalCode,
+                        country_name: "Uruguay",
+                        apartment: order.apartment,
+                    },
+                    cost: 0,
+                    mode: order.deliveryOption
+                },
+
+                additional_info: order.notes,
+                coupon_code: order.cupon_code,
+                payer: {
+
+                    name: order.fullName,
+                    email: order.email,
+                    phone: {
+                        number: order.phone
+                    },
+                    date_created: new Date(),
+
+                },
+            }
+            const createdOrder = await oService.createOrdenGeneral(orderGeneral);
+            const res = await sumSells(orderGeneral)
+            if (!createdOrder || !res) {
+                console.error('Error al crear la orden en la base de datos');
+                return res.status(500).json({
+                    message: 'No se pudo crear la orden. Inténtalo de nuevo más tarde.',
+                });
+            }
         }
-        // Crear la orden en la base de datos
-        /* const createdOrder = await oService.createOrdenOne(order);
-
-    // Validar si la orden fue creada exitosamente
-    */
-
-        // Responder con éxito
 
 
     } catch (error) {
@@ -358,7 +419,62 @@ export const createSimpleOrder = async (req, res) => {
         });
     }
 };
+export const sumSells = async (order) => {
+    try {
+        const result = productService.sumProducts(order)
 
+        if (!result) {
+            return console.error('Error al sumar');
+
+        }
+        return result
+    }
+
+    catch (error) {
+        // Manejo de errores generales
+        console.error('Error inesperado alsumar  la orden:', error);
+        return res.status(500).json({
+            message: 'Error interno del servidor al sumar la orden.'
+        });
+    }
+
+    // Devolver el resultado de la inserción del pago
+}
+export const registerPayment = async (req, res) => {
+    const paymentData = req.body;
+
+    console.log("Datos del pago recibidos:", paymentData);
+
+    // Validar y guardar los datos en la base de datos
+
+    if (paymentData.status === "approved") {
+        const paymentDone = new Preference(clientMP)
+        const preferenceItems = paymentDone.get({ preferenceId: paymentData.preference_id })
+        const order = {
+            items: (await preferenceItems).items,
+            buyer: (await preferenceItems).payer,
+            delivery: (await preferenceItems).shipments,
+            additional_info: (await preferenceItems).additional_info,
+            cupon_code: (await preferenceItems).coupon_code,
+        }
+        console.log(JSON.stringify(order))
+        const createdOrder = await oService.createOrdenOne(order);
+        const res = await sumSells(order)
+        if (!createdOrder || !res) {
+            console.error('Error al crear la orden en la base de datos');
+            return res.status(500).json({
+                message: 'No se pudo crear la orden. Inténtalo de nuevo más tarde.',
+            });
+        }
+        // Aquí iría tu lógica para registrar la compra
+        // Por ejemplo: guardar en la base de datos
+        console.log("Pago aprobado, registrando en la base de datos...");
+        res.status(200).json({ message: "Pago registrado exitosamente" });
+    } else {
+        console.log("Pago no aprobado, ignorando...");
+        res.status(400).json({ message: "Pago no válido" });
+    }
+}
 
 // Obtener todos los productos
 export const getAllProducts = async (req, res) => {

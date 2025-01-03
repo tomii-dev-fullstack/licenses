@@ -6,7 +6,22 @@ class ProductService {
     constructor() {
         this.collection = clientDB.db("tienda").collection('product'); // Nombre de la colección de usuarios
     }
+    async sumProducts(order) {
+        for (let item of order.items) {
+            const productoId = item.id; // El ID del producto que se compró
+            const cantidadVendida = item.quantity; // La cantidad que se compró
 
+            // Incrementamos el contador de ventas del producto
+            const resultadoPago = await this.collection.updateOne(
+                { _id: new ObjectId(productoId) }, // Filtro para encontrar el producto
+                { $inc: { ventas: cantidadVendida } } // Incrementamos el número de ventas
+            );
+            return resultadoPago;
+        }
+
+        // Devolver el resultado de la inserción del pago
+
+    }
     async getAllProducts() {
         return this.collection.find().toArray();
     }
@@ -179,14 +194,18 @@ class ProductService {
     }
     async getDestacados() {
         try {
-            // Accede directamente a la colección de productos desde `this.collection`
-            const destacados = this.collection.find({ destacado: true }).toArray();
+            // Encuentra los productos y ordénalos por el atributo "ventas" en orden descendente
+            const destacados = await this.collection
+                .find().sort({ ventas: -1 }) // Ordenar por "ventas" en orden descendente
+                .limit(10) // Opcional: limitar la cantidad de productos destacados
+                .toArray()
             return destacados;
         } catch (error) {
             console.error('Error fetching destacados:', error);
             throw new Error('Could not fetch destacados');
         }
     }
+    
 
 
 
@@ -420,7 +439,7 @@ class ProductService {
                     console.log("agregar variantes: " + JSON.stringify(variantesParaAgregar))
                     if (variantesParaAgregar.length > 0) {
                         // Asignamos un _id a cada variante y aseguramos que el precio sea un número
-                        const variantesConIdYPrecio = variantesParaAgregar.map((variante,index) => ({
+                        const variantesConIdYPrecio = variantesParaAgregar.map((variante, index) => ({
                             dato_1_col: variante.dato_1_col,
                             dato_2_mul: variante.dato_2_mul,
                             imagen: data.imagesAdded[index].nombre || null,
@@ -439,7 +458,7 @@ class ProductService {
                     }
                 };
                 const variantesParaEliminar = async (id, variantesParaEliminar) => {
-              
+
                     if (variantesParaEliminar?.length > 0) {
                         try {
                             // Construimos una condición para eliminar cada variante por su `_id`
@@ -470,7 +489,7 @@ class ProductService {
                 };
 
                 const obtenerVariantesParaEditar = (nuevasVariantes, variantesExistentes) => {
-              
+
                     return variantesExistentes
                         .filter(varianteExistente =>
                             nuevasVariantes.some(nuevaVariante => {
@@ -573,7 +592,7 @@ class ProductService {
                     const variantesParaAgregar = obtenerVariantesParaAgregar(nuevasVariantes, variantesExistentes);
                     const variantesParaEditar = obtenerVariantesParaEditar(variantes, variantesExistentes);
 
-       
+
 
                     // Agregar nuevas variantes
                     await agregarVariantes(this.collection, data, variantesParaAgregar);

@@ -7,8 +7,85 @@ class OrderService {
     constructor() {
         this.collection = clientDB.db("tienda").collection('order'); // Nombre de la colección de usuarios
     }
+    
     async createOrdenOne(order) {
-        return await this.collection.insertOne(order);
+        const paymentOrder = {
+            items: order.items.map(p => ({
+                _id: new ObjectId(p.id || undefined), // Manejo de id vacío
+                cantidad: p.quantity,
+                titulo: p.title,
+                precio: p.unit_price
+            })),
+            payment_method: order.payment_method,
+            fecha: new Date(),
+            comprador: {
+                telefono: order.buyer.phone.number,
+                /*  direccion: order.buyer.address.street_name,
+                 puerta: order.buyer.address.street_number, */
+                email: order.buyer.email,
+                nombre: order.buyer.name,
+                /*   apellido: order.buyer.surname, */
+            },
+            envio: {
+                modo: order.delivery.mode,
+                /*  metodo_envio: order.delivery.default_shipping_method, */
+                /*  costo: order.delivery.cost, */
+                direccion_receptor: {
+                    codigo_postal: order.delivery.receiver_address.zip_code,
+                    calle: order.delivery.receiver_address.street_name,
+                    numero: order.delivery.receiver_address.street_number,
+                    piso: order.delivery.receiver_address.floor,
+                    apartamento: order.delivery.receiver_address.apartment,
+                    ciudad: order.delivery.receiver_address.city_name,
+                    estado: order.delivery.receiver_address.state_name,
+                    pais: order.delivery.receiver_address.country_name
+                }
+            },
+            info_adicional: order.additional_info,
+            cupon: order.cupon_code
+        };
+        return await this.collection.insertOne(paymentOrder);
+
+    }
+    async createOrdenGeneral(order) {
+        console.log("Orden general" + JSON.stringify(order));
+        const paymentOrder = {
+            items: order.items.map(p => ({
+                _id: new ObjectId(p.id || undefined), // Manejo de id vacío
+                cantidad: p.quantity,
+                titulo: p.title,
+                precio: p.unit_price
+            })),
+            fecha: new Date(),
+            payment_method: order.payment_method,
+            comprador: {
+                telefono: order.payer.phone.number,
+                /*  direccion: order.buyer.address.street_name,
+                 puerta: order.buyer.address.street_number, */
+                email: order.payer.email,
+                nombre: order.payer.name,
+                method: order.payment_methods
+                /*   apellido: order.buyer.surname, */
+            },
+            envio: {
+                modo: order.shipments.mode,
+                /*  metodo_envio: order.delivery.default_shipping_method, */
+                /*  costo: order.delivery.cost, */
+                direccion_receptor: {
+                    codigo_postal: order.shipments.receiver_address.zip_code,
+                    calle: order.shipments.receiver_address.street_name,
+                    numero: order.shipments.receiver_address.street_number,
+                    piso: order.shipments.receiver_address.floor,
+                    apartamento: order.shipments.receiver_address.apartment,
+                    ciudad: order.shipments.receiver_address.city_name,
+                    estado: order.shipments.receiver_address.state_name,
+                    pais: order.shipments.receiver_address.country_name
+                }
+            },
+            info_adicional: order.additional_info,
+            cupon: order.cupon_code
+        };
+        return await this.collection.insertOne(paymentOrder);
 
     }
     async getOrderSimple() {
