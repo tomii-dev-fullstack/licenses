@@ -373,7 +373,7 @@ export const createSimpleOrder = async (req, res) => {
                     quantity: item.cantidad || 1,
                     unit_price: Number(item.precio) || 0, // Ajusta para el precio
                     category_id: item.categoria,
-                    description: item.peso + item.color,
+                    description: `${item.peso}-${item.color}`,
                 })),
 
 

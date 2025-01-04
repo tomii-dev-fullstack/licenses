@@ -16,6 +16,7 @@ class OrderService {
                 titulo: p.title,
                 precio: p.unit_price,
                 description: p.description,
+                category_id: p.category_id
             })),
             payment_method: order.payment_method,
             fecha: new Date(),
@@ -57,6 +58,7 @@ class OrderService {
                 titulo: p.title,
                 precio: p.unit_price,
                 description: p.description,
+                category_id: p.category_id
             })),
             fecha: new Date(),
             payment_method: order.payment_method,
