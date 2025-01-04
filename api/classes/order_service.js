@@ -14,7 +14,8 @@ class OrderService {
                 _id: new ObjectId(p.id || undefined), // Manejo de id vacío
                 cantidad: p.quantity,
                 titulo: p.title,
-                precio: p.unit_price
+                precio: p.unit_price,
+                description: p.description,
             })),
             payment_method: order.payment_method,
             fecha: new Date(),
@@ -54,7 +55,8 @@ class OrderService {
                 _id: new ObjectId(p.id || undefined), // Manejo de id vacío
                 cantidad: p.quantity,
                 titulo: p.title,
-                precio: p.unit_price
+                precio: p.unit_price,
+                description: p.description,
             })),
             fecha: new Date(),
             payment_method: order.payment_method,

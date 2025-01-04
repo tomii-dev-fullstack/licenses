@@ -289,12 +289,14 @@ export const createSimpleOrder = async (req, res) => {
             /*   const URL = "https://ecommerce-gabriela.vercel.app"; */
             payment.create({
                 body: {
+
                     items: payload.items.map(item => ({
                         id: item.id,
                         title: item.titulo || "Producto sin título", // Ajusta según la estructura de tu carrito
                         quantity: item.cantidad || 1,
                         unit_price: Number(item.precio) || 0, // Ajusta para el precio
                         category_id: item.categoria,
+                        description: item.peso + item.color,
                     })),
                     auto_return: "approved",
                     back_urls: {
@@ -371,6 +373,7 @@ export const createSimpleOrder = async (req, res) => {
                     quantity: item.cantidad || 1,
                     unit_price: Number(item.precio) || 0, // Ajusta para el precio
                     category_id: item.categoria,
+                    description: item.peso + item.color,
                 })),
 
 
@@ -456,6 +459,7 @@ export const registerPayment = async (req, res) => {
             delivery: (await preferenceItems).shipments,
             additional_info: (await preferenceItems).additional_info,
             cupon_code: (await preferenceItems).coupon_code,
+
         }
         console.log(JSON.stringify(order))
         const createdOrder = await oService.createOrdenOne(order);
@@ -469,7 +473,7 @@ export const registerPayment = async (req, res) => {
         // Aquí iría tu lógica para registrar la compra
         // Por ejemplo: guardar en la base de datos
         console.log("Pago aprobado, registrando en la base de datos...");
-        res.status(200).json({ message: "Pago registrado exitosamente" });
+
     } else {
         console.log("Pago no aprobado, ignorando...");
         res.status(400).json({ message: "Pago no válido" });
