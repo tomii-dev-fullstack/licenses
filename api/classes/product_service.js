@@ -14,7 +14,7 @@ class ProductService {
             // Incrementamos el contador de ventas del producto
             const resultadoPago = await this.collection.updateOne(
                 { _id: new ObjectId(productoId) }, // Filtro para encontrar el producto
-                { $inc: { ventas: cantidadVendida } } // Incrementamos el número de ventas
+                { $inc: { ventas: cantidadVendida, stock: -cantidadVendida } } // Incrementamos el número de ventas
             );
             return resultadoPago;
         }
@@ -150,7 +150,10 @@ class ProductService {
                     categoria: 1, // Incluir el campo categoria
                     variantes: 1,
                     precio: 1,
-                    imagenes: 1
+                    imagesAdded: 1,
+                    variantes: 1,
+                    stock: 1,
+                    color: 1,
                 },
             },
         ]).toArray();
@@ -205,7 +208,7 @@ class ProductService {
             throw new Error('Could not fetch destacados');
         }
     }
-    
+
 
 
 
@@ -320,476 +323,145 @@ class ProductService {
 
     async upproduct(data) {
         try {
-            // Verifica si es un producto sin variantes
+            // Verifica si el producto tiene variantes
             if (data.productoConVariantes === "no") {
+                function sanitizeFileName(fileName) {
+                    return fileName
+                        .toLowerCase()                   // Convierte todo a minúsculas
+                        .replace(/ /g, '')              // Reemplaza espacios con guiones bajos
+                        .replace(/-/g, '')               // Elimina guiones
+                        .replace(/[^a-z0-9_.]/g, '');    // Elimina caracteres especiales, dejando solo letras, números, guiones bajos y puntos
+                }
+                const imagenesNuevas = Array.isArray(data.imagesAdded) ?
+                    data.imagesAdded?.map(imagen => sanitizeFileName(imagen)) : [];
 
-                // Mapeamos las imágenes para extraer los datos que queremos agregar
-                const imagenes = data.imagesAdded ? data.imagesAdded.map((imagen) => ({
-                    nombre: imagen.nombre, // Asegúrate de que 'nombre' esté presente en cada imagen
-
-                })) : [];
-
-                // Construimos el objeto de actualización
+                // Concatenar las imágenes existentes con las nuevas imágenes
+                const imagenesExistentes = Array.isArray(data?.imagenesExistentes) ?
+                    data.imagenesExistentes : [];
+                // Producto sin variantes, actualizamos solo los campos generales
+                console.log("final data" + JSON.stringify(data))
                 const updateData = {
                     productoConVariantes: data.productoConVariantes,
                     titulo: data.titulo,
+                    imagesAdded: [...imagenesExistentes, ...imagenesNuevas],
                     descripcion: data.descripcion,
                     productoTipo: data.productoTipo,
                     categoria: data.categoria,
                     color: data.color,
                     precio: Number(data.precio),
-                    variantes: [] // Si no hay variantes, se agrega un array vacío
+                    variantes: []  // No hay variantes en este producto
                 };
 
                 const updateQuery = {
                     $set: updateData
                 };
 
-                // Si hay nuevas imágenes, agregamos al array `imagesAdded`
-                if (imagenes.length > 0) {
-                    updateQuery.$push = {
-                        imagesAdded: { $each: imagenes }
-                    };
+                // Ejecuta la actualización del producto sin variantes
+                await this.collection.updateOne(
+                    { _id: new ObjectId(data.id) },
+                    updateQuery
+                );
+
+                console.log("Producto actualizado correctamente (sin variantes).");
+                return { message: "Producto actualizado correctamente (sin variantes)." };
+
+            } else {
+                // Producto con variantes, actualizamos las variantes y otros campos
+                const updateSetQuery = {};
+
+                // Verificar si hay cambios en los datos generales del producto
+                if (data.titulo) updateSetQuery.titulo = data.titulo;
+                if (data.descripcion) updateSetQuery.descripcion = data.descripcion;
+                if (data.productoTipo) updateSetQuery.productoTipo = data.productoTipo;
+                if (data.categoria) updateSetQuery.categoria = data.categoria;
+                if (data.color) updateSetQuery.color = data.color;
+                if (data.precio) updateSetQuery.precio = Number(data.precio);
+
+                // Si se han realizado cambios, actualizamos el producto
+                if (Object.keys(updateSetQuery).length > 0) {
+                    await this.collection.updateOne(
+                        { _id: new ObjectId(data.id) },
+                        { $set: updateSetQuery }
+                    );
+                    console.log("Producto actualizado con nuevos datos.");
                 }
 
-                // Si hay imágenes para eliminar, usamos $pull
-                if (Array.isArray(data.imagesDeleted) && data.imagesDeleted.length > 0) {
-                    // Crear un array para almacenar los nombres de las imágenes a eliminar
-                    const nombresAEliminar = [];
+                // Si hay variantes, se manejan de forma separada
+                console.log("data variantes:" + JSON.stringify(data.variantes))
 
-                    data.imagesDeleted.forEach((imageStr) => {
-                        // Convertir el string en un objeto JSON
-                        const imageObj = JSON.parse(imageStr);
+                const actualizarVariantes = async () => {
+                    // Función para limpiar el nombre de la imagen
+                    function sanitizeFileName(fileName) {
+                        return fileName
+                            .toLowerCase()                   // Convierte todo a minúsculas
+                            .replace(/ /g, '')              // Reemplaza espacios con guiones bajos
+                            .replace(/-/g, '')               // Elimina guiones
+                            .replace(/[^a-z0-9_.]/g, '');    // Elimina caracteres especiales, dejando solo letras, números, guiones bajos y puntos
+                    }
 
-                        // Corregir la clave "nombre" si aparece entre comillas
-                        const correctedImageObj = {};
-                        for (const key in imageObj) {
-                            const correctedKey = key.replace(/"/g, ""); // Eliminar las comillas de la clave
-                            correctedImageObj[correctedKey] = imageObj[key];
-                        }
+                    // Procesar las variantes: cada variante puede tener imágenes dentro
+                    const variantesActualizadas = data.variantes?.map(variante => {
+                        const imagenesNuevas = Array.isArray(variante.imagenes) ?
+                            variante.imagenes?.map(imagen => sanitizeFileName(imagen)) : [];
 
-                        // Añadir el nombre al array de nombres a eliminar
-                        nombresAEliminar.push(correctedImageObj.nombre);
+                        // Concatenar las imágenes existentes con las nuevas imágenes
+                        const imagenesExistentes = Array.isArray(variante?.imagenesExistentes) ?
+                            variante.imagenesExistentes : [];
+                        console.log("imgs existentes " + JSON.stringify(imagenesExistentes))
+                        const varianteActualizada = {
+                            _id: variante._id || new ObjectId(), // Si la variante no tiene _id, asignamos uno nuevo
+                            dato_1_col: sanitizeFileName(variante.dato_1_col),  // Limpiar texto de dato_1_col
+                            dato_2_mul: sanitizeFileName(variante.dato_2_mul),  // Limpiar texto de dato_2_mul
+                            dato_3_pre: Number(variante.dato_3_pre) || 0,       // Convertir el precio a número
+                            imagenes: [...imagenesExistentes, ...imagenesNuevas]  // Concatenar las imágenes existentes con las nuevas
+                        };
 
-                        console.log('Nombre de la imagen eliminada:', correctedImageObj.nombre);
+                        return varianteActualizada;
                     });
 
-                    // Construir la consulta $pull con los nombres recopilados
-                    if (nombresAEliminar.length > 0) {
-                        updateQuery.$pull = {
-                            imagesAdded: { nombre: { $in: nombresAEliminar } }
-                        };
-                    }
+                    // Aquí puedes proceder con la actualización de las variantes con el array de nombres de imágenes concatenado
+                    try {
+                        // Buscar el producto por ID
+                        const producto = await this.collection.findOne({ _id: new ObjectId(data.id) });
 
-                    console.log('Consulta $pull construida:', updateQuery);
-                }
-
-
-
-
-
-                try {
-                    /* JSON.stringify(data.imagesDeleted) */
-                    // Ejecutamos la actualización
-                    const productUpdate = await this.collection.updateOne(
-                        { _id: new ObjectId(data.id) },
-                        updateQuery
-                    );
-
-                    console.log("Producto actualizado con nuevas imágenes.");
-                    return productUpdate;
-                } catch (error) {
-                    console.error("Error actualizando las imágenes del producto:", error);
-                    throw new Error("Error actualizando las imágenes del producto");
-                }
-            } else {
-
-
-                /* ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- */
-                const actualizarProducto = async (collection, id, data) => {
-                    const updateSetQuery = {};
-
-                    // Verificar si el título ha cambiado
-                    if (data.titulo) {
-                        updateSetQuery.titulo = data.titulo;
-                    }
-
-                    // Verificar si la descripción ha cambiado
-                    if (data.descripcion) {
-                        updateSetQuery.descripcion = data.descripcion;
-                    }
-
-                    // Si hay cambios en título o descripción, actualizamos el producto
-                    if (Object.keys(updateSetQuery).length > 0) {
-                        try {
-                            const result = await collection.updateOne(
-                                { _id: new ObjectId(id) },  // Buscar producto por ID
-                                { $set: updateSetQuery }    // Aplicar los cambios
-                            );
-                            console.log("Producto actualizado correctamente:", result);
-                        } catch (error) {
-                            console.error("Error al actualizar el producto:", error);
+                        if (!producto) {
+                            throw new Error("Producto no encontrado");
                         }
-                    }
-                };
 
-                // Generar un ObjectId para cada variante si no tiene uno
-                const agregarVariantes = async (collection, data, variantesParaAgregar) => {
-                    // Si hay variantes para agregar
-                    console.log("agregar variantes: " + JSON.stringify(variantesParaAgregar))
-                    if (variantesParaAgregar.length > 0) {
-                        // Asignamos un _id a cada variante y aseguramos que el precio sea un número
-                        const variantesConIdYPrecio = variantesParaAgregar.map((variante, index) => ({
-                            dato_1_col: variante.dato_1_col,
-                            dato_2_mul: variante.dato_2_mul,
-                            imagen: data.imagesAdded[index].nombre || null,
-                            dato_3_pre: Number(variante.dato_3_pre) || 0, // Convertimos el precio a número (si no es válido, asignamos 0)
-                            _id: variante._id || new ObjectId(), // Si no tiene _id, asignamos uno nuevo
+                        // Usamos el operador $set para actualizar las variantes
+                        const updateQuery = {
+                            $set: {
+                                variantes: variantesActualizadas // Reemplazar las variantes con las nuevas variantes
+                            }
+                        };
 
-                        }));
-
-                        // Realizamos la actualización, agregando las variantes al array "variantes"
-                        await collection.updateOne(
+                        // Realizamos la actualización en la base de datos
+                        const result = await this.collection.updateOne(
                             { _id: new ObjectId(data.id) },
-                            { $push: { variantes: { $each: variantesConIdYPrecio } } }
+                            updateQuery
                         );
 
-                        console.log("Nuevas variantes agregadas correctamente.");
-                    }
-                };
-                const variantesParaEliminar = async (id, variantesParaEliminar) => {
+                        console.log("Variantes actualizadas correctamente:", result);
+                        return result;
 
-                    if (variantesParaEliminar?.length > 0) {
-                        try {
-                            // Construimos una condición para eliminar cada variante por su `_id`
-                            const condicionesParaEliminar = variantesParaEliminar?.map((variante) => ({ _id: new ObjectId(variante._id) }));
-
-                            // Realizamos la actualización, eliminando variantes específicas del array "variantes"
-                            const result = await this.collection.updateOne(
-                                { _id: new ObjectId(id) },
-                                { $pull: { variantes: { $or: condicionesParaEliminar } } } // Usamos $or para aplicar múltiples condiciones
-                            );
-
-                            console.log("Variantes eliminadas correctamente:", result);
-                        } catch (error) {
-                            console.error("Error al eliminar variantes:", error);
-                        }
+                    } catch (error) {
+                        console.error("Error al actualizar variantes:", error);
+                        throw new Error("Error al actualizar variantes");
                     }
                 };
 
 
 
+                // Llamamos a la función para actualizar las variantes
+                await actualizarVariantes();
 
-                const obtenerVariantesParaAgregar = (nuevasVariantes, variantesExistentes) => {
-                    return nuevasVariantes.filter(nuevaVariante =>
-                        !variantesExistentes.some(varianteExistente =>
-                            nuevaVariante._id && nuevaVariante._id.toString() === varianteExistente._id.toString()
-                        )
-                    );
-                };
-
-                const obtenerVariantesParaEditar = (nuevasVariantes, variantesExistentes) => {
-
-                    return variantesExistentes
-                        .filter(varianteExistente =>
-                            nuevasVariantes.some(nuevaVariante => {
-                                const nuevaId = nuevaVariante._id?.toString();
-                                const existenteId = varianteExistente._id?.toString();
-                                console.log("Comparando IDs:", { nuevaId, existenteId });
-                                return nuevaId === existenteId;
-                            })
-                        )
-                        .map(varianteExistente => {
-                            const nuevaVariante = nuevasVariantes.find(nueva => {
-                                const nuevaId = nueva._id?.toString();
-                                const existenteId = varianteExistente._id?.toString();
-                                console.log("Buscando nueva variante:", { nuevaId, existenteId });
-                                return nuevaId === existenteId;
-                            });
-
-                            console.log("Nueva variante encontrada:", nuevaVariante);
-
-                            if (!nuevaVariante) return null; // Ignorar si no hay una variante nueva que coincida
-
-                            const cambios = {};
-                            if (nuevaVariante.dato_1_col !== varianteExistente.dato_1_col) {
-                                cambios.dato_1_col = nuevaVariante.dato_1_col;
-                            }
-                            if (nuevaVariante.dato_2_mul !== varianteExistente.dato_2_mul) {
-                                cambios.dato_2_mul = nuevaVariante.dato_2_mul;
-                            }
-                            if (Number(nuevaVariante.dato_3_pre) !== Number(varianteExistente.dato_3_pre)) {
-                                cambios.dato_3_pre = Number(nuevaVariante.dato_3_pre);
-                            }
-                            if (nuevaVariante.imagen !== varianteExistente.imagen) {
-                                cambios.imagen = nuevaVariante.imagen;
-                            }
-
-                            return {
-                                _id: varianteExistente._id,
-                                cambios,
-                            };
-                        })
-                        .filter(edit => edit !== null && Object.keys(edit.cambios).length > 0); // Filtrar cambios vacíos
-                };
-
-                const actualizarVariantes = async (collection, id, variantesParaEditar) => {
-                    if (variantesParaEditar.length > 0) {
-                        for (const { _id, cambios } of variantesParaEditar) {
-                            const updateSetQuery = {};
-                            console.log(cambios)
-                            // Construimos el $set para solo los campos que tienen cambios
-                            if (cambios.dato_1_col) {
-                                updateSetQuery[`variantes.$[variante].dato_1_col`] = cambios.dato_1_col;
-                            }
-                            if (cambios.dato_2_mul) {
-                                updateSetQuery[`variantes.$[variante].dato_2_mul`] = cambios.dato_2_mul;
-                            }
-                            if (cambios.dato_3_pre) {
-                                updateSetQuery[`variantes.$[variante].dato_3_pre`] = cambios.dato_3_pre;
-                            }
-                            if (cambios.imagen) {
-                                updateSetQuery[`variantes.$[variante].imagen`] = cambios.imagen;
-                            }
-
-                            // Aplicamos solo si hay cambios en el objeto
-                            if (Object.keys(updateSetQuery).length > 0) {
-                                try {
-                                    const result = await collection.updateOne(
-                                        { _id: new ObjectId(id) }, // Buscamos el documento por ID principal
-                                        { $set: updateSetQuery }, // Aplicamos los cambios
-                                        {
-                                            arrayFilters: [
-                                                { 'variante._id': new ObjectId(_id) } // Filtro para la variante específica
-                                            ]
-                                        }
-                                    );
-
-                                    console.log(`Actualización realizada para variante ${_id}:`, result);
-                                } catch (error) {
-                                    console.error(`Error al actualizar variante ${_id}:`, error);
-                                }
-                            }
-                        }
-                    }
-                };
-
-
-                try {
-                    // Obtener el producto
-                    const producto = await this.collection.findOne({ _id: new ObjectId(data.id) });
-
-                    if (!producto) {
-                        throw new Error("Producto no encontrado");
-                    }
-                    await actualizarProducto(this.collection, data.id, data);
-                    const variantesExistentes = producto.variantes || [];
-                    const nuevasVariantes = data.nuevas_variantes || [];
-                    const variantes = data.variantes || [];
-                    const variantesEliminar = data.variantes_borradas || [];
-
-                    // Identificar variantes para agregar y editar
-                    const variantesParaAgregar = obtenerVariantesParaAgregar(nuevasVariantes, variantesExistentes);
-                    const variantesParaEditar = obtenerVariantesParaEditar(variantes, variantesExistentes);
-
-
-
-                    // Agregar nuevas variantes
-                    await agregarVariantes(this.collection, data, variantesParaAgregar);
-
-                    // Editar variantes existentes
-                    await actualizarVariantes(this.collection, data.id, variantesParaEditar);
-                    await variantesParaEliminar(data.id, data.variantes_borradas)
-
-                    console.log("Proceso de actualización de variantes completado.");
-                } catch (error) {
-                    console.error("Error al procesar variantes:", error);
-                    throw error;
-                }
-
-
-
-                /*      const updateFields = {
-                         productoConVariantes: data.productoConVariantes,
-                         titulo: data.titulo,
-                         descripcion: data.descripcion,
-                         productoTipo: data.productoTipo,
-                         categoria: data.categoria,
-     
-                     };
-     
-                     try {
-                         // Actualizar campos generales
-                         await this.collection.updateOne(
-                             { _id: new ObjectId(data.id) },
-                             { $set: updateFields }
-                         );
-                         console.log("Campos generales actualizados correctamente.");
-                     } catch (error) {
-                         console.error("Error actualizando campos generales:", error);
-                         throw error;
-                     }
-     
-     
-     
-     
-     
-     
-                     // Función para comparar variantes basadas en propiedades clave
-                     const sonVariantesIguales = (variant1, variant2) => {
-                         return (
-                             variant1.titulo === variant2.titulo &&
-                             variant1.descripcion === variant2.descripcion &&
-                             variant1.imagen === variant2.imagen
-                         );
-                     };
-     
-                     // Filtrar variantes para agregar
-                     const variantesParaAgregar = data.nuevas_variantes?.filter(nuevaVariante =>
-                         !data.variantes?.some(varianteExistente =>
-                             sonVariantesIguales(nuevaVariante, varianteExistente)
-                         )
-                     );
-     
-                     // Filtrar variantes para actualizar
-                     const variantesParaActualizar = data.variantes.filter(varianteExistente =>
-                         data.nuevas_variantes?.some(nuevaVariante =>
-                             sonVariantesIguales(nuevaVariante, varianteExistente)
-                         )
-                     );
-     
-                     const encontrarIndiceVariante = (variantes, varianteBuscada) => {
-                         return variantes.findIndex(variant =>
-                             variant.dato_1_col === varianteBuscada.dato_1_col &&
-                             variant.dato_2_mul === varianteBuscada.dato_2_mul &&
-                             variant.dato_3_pre === varianteBuscada.dato_3_pre &&
-                             variant.imagen === varianteBuscada.imagen
-                         );
-                     };
-     
-     
-                     const variantesParaEditar = data.variantes?.filter((varianteExistente, index) => {
-                         // Compara cada campo de la variante existente con los datos proporcionados
-                         return (
-                             varianteExistente.dato_1_col !== data.variantes[index]?.dato_1_col ||
-                             varianteExistente.dato_2_mul !== data.variantes[index]?.dato_2_mul ||
-                             varianteExistente.dato_3_pre !== data.variantes[index]?.dato_3_pre ||
-                             varianteExistente.imagen !== data.variantes[index]?.imagen
-                         );
-                     });
-     
-                     let v = JSON.stringify(data.variantes)
-                     if (v.length > 0) {
-                         const updateSetQuery = { $set: {} };
-                         console.log("v: " + v)
-                         variantesParaEditar.forEach((variantEdit) => {
-                             const index = encontrarIndiceVariante(data.variantes, variantEdit);
-                             if (index >= 0) {
-                                 // Actualiza solo los campos que han cambiado
-                                 if (variantEdit.dato_1_col !== data.variantes[index].dato_1_col) {
-                                     updateSetQuery.$set[`variantes.${index}.dato_1_col`] = variantEdit.dato_1_col;
-                                 }
-                                 if (variantEdit.dato_2_mul !== data.variantes[index].dato_2_mul) {
-                                     updateSetQuery.$set[`variantes.${index}.dato_2_mul`] = variantEdit.dato_2_mul;
-                                 }
-                                 if (variantEdit.dato_3_pre !== data.variantes[index].dato_3_pre) {
-                                     updateSetQuery.$set[`variantes.${index}.dato_3_pre`] = Number(variantEdit.dato_3_pre);
-                                 }
-                                 if (variantEdit.imagen !== data.variantes[index].imagen) {
-                                     updateSetQuery.$set[`variantes.${index}.imagen`] = variantEdit.imagen;
-                                 }
-     
-                             }
-                         });
-                         if (Object.keys(updateSetQuery.$set).length > 0) {
-                             try {
-                                 await this.collection.updateOne({ _id: new ObjectId(data.id) }, updateSetQuery);
-                                 console.log("Variantes actualizadas correctamente.");
-                             } catch (error) {
-                                 console.error("Error actualizando variantes:", error);
-                                 throw error;
-                             }
-                         } else {
-                             console.log("No hay cambios detectados en las variantes para actualizar.");
-                         }
-                     }
-     
-                     const updateData = {
-                         productoConVariantes: data.productoConVariantes,
-                         titulo: data.titulo,
-                         descripcion: data.descripcion,
-                         productoTipo: data.productoTipo,
-                         categoria: data.categoria,
-                         color: data.color,
-                         precio: data.precio,
-                         imagenes: [], // Si no hay nuevas imágenes, dejamos este array vacío
-                     };
-     
-                     // Inicializamos la consulta de actualización
-                     const updateQuery = {
-                         $set: updateData
-                     };
-                     if (variantesParaActualizar.length > 0) {
-                         const updateSetQuery = { $set: {} };
-     
-                         variantesParaActualizar.forEach((variant) => {
-                             const index = data.variantes.findIndex(v =>
-                                 sonVariantesIguales(v, variant)
-                             );
-     
-                             if (index >= 0) {
-                                 updateSetQuery.$set[`variantes.${index}.dato_1_col`] = variant.dato_1_col;
-                                 updateSetQuery.$set[`variantes.${index}.dato_2_mul`] = variant.dato_2_mul;
-                                 updateSetQuery.$set[`variantes.${index}.dato_3_pre`] = Number(variant.dato_3_pre);
-                                 updateSetQuery.$set[`variantes.${index}.imagen`] = variant.imagen;
-                             }
-                         });
-     
-                         try {
-                             await this.collection.updateOne({ _id: new ObjectId(data.id) }, updateSetQuery);
-                             console.log("Variantes existentes actualizadas correctamente.");
-                         } catch (error) {
-                             console.error("Error actualizando variantes existentes:", error);
-                             throw error;
-                         }
-                     }
-     
-                     if (variantesParaAgregar?.length > 0) {
-                         const updatePushQuery = {
-                             $push: {
-                                 variantes: { $each: variantesParaAgregar },
-                             },
-                         };
-     
-                         try {
-                             await this.collection.updateOne({ _id: new ObjectId(data.id) }, updatePushQuery);
-                             console.log("Nuevas variantes agregadas correctamente.");
-                         } catch (error) {
-                             console.error("Error agregando nuevas variantes:", error);
-                             throw error;
-                         }
-                     }
-     
-     
-                     // Si hay imágenes para eliminar, usamos $pull
-                     if (Array.isArray(data.imagesDeleted) && data.imagesDeleted.length > 0) {
-                         const nombresParaEliminar = data.imagesDeleted.map(imagen => imagen.nombre);
-                         console.log("Imágenes a eliminar:", nombresParaEliminar);
-     
-                         // Construimos la consulta $pull para eliminar las imágenes
-                         updateQuery.$pull = {
-                             imagesAdded: { nombre: { $in: nombresParaEliminar } }
-                         };
-                     } */
-
-
+                console.log("Producto y variantes actualizados correctamente.");
+                return { message: "Producto y variantes actualizados correctamente." };
             }
         } catch (error) {
-            console.error("Error actualizando producto: ", error);
+            console.error("Error al actualizar el producto: ", error);
             throw new Error("Error al actualizar el producto");
         }
-
-
     }
 
 
