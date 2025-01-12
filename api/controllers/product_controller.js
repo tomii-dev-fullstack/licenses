@@ -217,7 +217,7 @@ export const createSimpleOrder = async (req, res) => {
         const { payload } = req.body;
         console.log("payload" + payload);
         // Validación inicial de los datos enviados
-        /*   if (
+          if (
               !payload ||
               !payload.items || payload.items.length === 0 ||
               !payload.totalAmount || isNaN(payload.totalAmount) ||
@@ -227,7 +227,7 @@ export const createSimpleOrder = async (req, res) => {
               !payload.deliveryOption || payload.deliveryOption === "" ||
               !payload.address || payload.address === "" ||
               !payload.city || payload.city === "" ||
-              !payload.postalCode || payload.postalCode === "" ||
+              !payload.postalCode || payload.postalCode === "" || payload.paymentMethod === ""||
               !payload.phone || payload.phone === "" ||
               !payload.email || !/^[\w.-]+@[a-zA-Z\d.-]+\.[a-zA-Z]{2,}$/.test(payload.email) // Validación básica de email
           ) {
@@ -248,7 +248,7 @@ export const createSimpleOrder = async (req, res) => {
                   }
               });
           } 
-  */
+  
         // Construcción de la orden
         const order = {
             fullName: payload.fullName,
