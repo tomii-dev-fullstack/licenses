@@ -154,6 +154,7 @@ class ProductService {
                     variantes: 1,
                     stock: 1,
                     color: 1,
+                    activo:1
                 },
             },
         ]).toArray();
