@@ -2,7 +2,7 @@ import express from 'express';
 import multer from 'multer';
 import path from 'path';
 const router = express.Router();
-import { createProduct, getAllProducts,registersearch, getOnlyProductById,obtenerDatosDeCategoriaElegida,getProductsByProductType, getProductById, updateProduct ,deleteImage, getAllImagesOfProducts,uploadImageToProduct, getSuppliers, getProductsByCategory, deleteProd, createSimpleOrder, getOrder, getOrderbyid, gProductForEdit, getDestacados, deleteimages, deleteImagep, deleteProduct, registerPayment} from '../controllers/product_controller.js';
+import { createProduct, getAllProducts,registersearch, getOnlyProductById,obtenerDatosDeCategoriaElegida,getProductsByProductType, getProductById, updateProduct ,deleteImage, getAllImagesOfProducts,uploadImageToProduct, getSuppliers, getProductsByCategory, deleteProd, createSimpleOrder, getOrder, getOrderbyid, gProductForEdit, getDestacados, deleteimages, deleteImagep, deleteProduct, registerPayment, getPromos} from '../controllers/product_controller.js';
 /* import checkPermission from '../middlewares/checkPermission.js';
  */
 const storage = multer.diskStorage({
@@ -29,6 +29,7 @@ router.get('/orders/:id', getOrderbyid);
 router.get('/products', getAllProducts);
 router.get('/get-suppliers', getSuppliers);
 router.get('/get-destacados', getDestacados);
+router.get('/get-promotions', getPromos);
 router.get('/all-images', getAllImagesOfProducts);
 router.get('/productsbyproductstype', getProductsByProductType);
 router.put('/save-edits', upload.any(), updateProduct);

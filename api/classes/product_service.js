@@ -121,7 +121,7 @@ class ProductService {
         return this.collection.aggregate([
             {
                 $match: { categoria: category }
-            }
+            },
         ]).toArray();
     }
 
@@ -154,7 +154,7 @@ class ProductService {
                     variantes: 1,
                     stock: 1,
                     color: 1,
-                    activo:1
+                    activo: 1
                 },
             },
         ]).toArray();
@@ -204,6 +204,18 @@ class ProductService {
                 .limit(10) // Opcional: limitar la cantidad de productos destacados
                 .toArray()
             return destacados;
+        } catch (error) {
+            console.error('Error fetching destacados:', error);
+            throw new Error('Could not fetch destacados');
+        }
+    }
+    async getPromotions() {
+        try {
+            // Encuentra los productos y ordénalos por el atributo "ventas" en orden descendente
+            const p = await this.collection
+                .find()
+                .toArray()
+            return p;
         } catch (error) {
             console.error('Error fetching destacados:', error);
             throw new Error('Could not fetch destacados');

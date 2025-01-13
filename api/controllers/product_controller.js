@@ -21,7 +21,7 @@ export const createProduct = async (req, res) => {
 
         console.log("product y archivo" + JSON.stringify(data), JSON.stringify(archivos))
         // Validar datos básicos
-        if (!data || !data.titulo || !data.productoTipo || !data.categoria || !data.stock || !data.productoConVariantes || !data.promocion || !data.precio) {
+        if (!data || !data.titulo || !data.productoTipo || !data.categoria  || !data.productoConVariantes || !data.promocion) {
             return res.status(400).json({ message: 'Datos incompletos en el cuerpo de la solicitud.' });
         }
 
@@ -35,7 +35,7 @@ export const createProduct = async (req, res) => {
         }
 
         for (const variant of variantes) {
-            if (!variant.dato_1_col || !variant.dato_2_mul || !variant.dato_3_pre || archivos.length === 0) {
+            if (!variant.dato_2_mul || !variant.dato_3_pre || archivos.length === 0 || !variant.dato_4_stock) {
                 return res.status(400).json({ message: 'Datos incompletos en una o más variantes.' });
             }
         }
@@ -83,6 +83,7 @@ export const createProduct = async (req, res) => {
                 dato_1_col: variant.dato_1_col,
                 dato_2_mul: variant.dato_2_mul,
                 dato_3_pre: Number(variant.dato_3_pre),
+                dato_4_stock: Number(variant.dato_4_stock),
                 imagenes: variant.imagenes.map(img => sanitizeFileName(img.originalname)),
                 color: variant.color || ""
             })) : []
@@ -217,37 +218,40 @@ export const createSimpleOrder = async (req, res) => {
         const { payload } = req.body;
         console.log("payload" + payload);
         // Validación inicial de los datos enviados
-          if (
-              !payload ||
-              !payload.items || payload.items.length === 0 ||
-              !payload.totalAmount || isNaN(payload.totalAmount) ||
-              !payload.subtotal || isNaN(payload.subtotal) ||
-              payload.discountAmount === undefined || isNaN(payload.discountAmount) ||
-              !payload.fullName || payload.fullName === "" ||
-              !payload.deliveryOption || payload.deliveryOption === "" ||
-              !payload.address || payload.address === "" ||
-              !payload.city || payload.city === "" ||
-              !payload.postalCode || payload.postalCode === "" || payload.paymentMethod === ""||
-              !payload.phone || payload.phone === "" ||
-              !payload.email || !/^[\w.-]+@[a-zA-Z\d.-]+\.[a-zA-Z]{2,}$/.test(payload.email) // Validación básica de email
-          ) {
-              return res.status(400).json({
-                  message: 'Datos incompletos o inválidos: asegúrate de llenar todos los campos requeridos correctamente.',
-                  errors: {
-                      items: payload.items && payload.items.length > 0 ? null : "Se requieren items en el carrito.",
-                      totalAmount: !isNaN(payload.totalAmount) ? null : "totalAmount debe ser un número válido.",
-                      subtotal: !isNaN(payload.subtotal) ? null : "subtotal debe ser un número válido.",
-                      discountAmount: !isNaN(payload.discountAmount) ? null : "discountAmount debe ser un número válido.",
-                      fullName: payload.fullName && payload.fullName ? null : "fullName es obligatorio.",
-                      deliveryOption: payload.deliveryOption && payload.deliveryOption ? null : "deliveryOption es obligatorio.",
-                      address: payload.address && payload.address ? null : "address es obligatorio.",
-                      city: payload.city && payload.city ? null : "city es obligatorio.",
-                      postalCode: payload.postalCode && payload.postalCode ? null : "postalCode es obligatorio.",
-                      phone: payload.phone && payload.phone ? null : "phone es obligatorio.",
-                      email: /^[\w.-]+@[a-zA-Z\d.-]+\.[a-zA-Z]{2,}$/.test(payload.email) ? null : "email debe ser válido."
-                  }
-              });
-          } 
+        if (
+            !payload ||
+            !payload.items || payload.items.length === 0 ||
+            !payload.totalAmount || isNaN(payload.totalAmount) ||
+            !payload.subtotal || isNaN(payload.subtotal) ||
+            payload.discountAmount === undefined || isNaN(payload.discountAmount) ||
+            !payload.fullName || payload.fullName === "" ||
+            !payload.deliveryOption || payload.deliveryOption === "" ||
+            (!payload.address || payload.address === "") && payload.deliveryOption === "envio" ||
+        /*     (!payload.city || payload.city === "") && payload.deliveryOption === "envio" || */
+            (!payload.postalCode || payload.postalCode === "") && payload.deliveryOption === "envio" ||
+            !payload.phone || payload.phone === "" ||
+            !payload.email || !/^[\w.-]+@[a-zA-Z\d.-]+\.[a-zA-Z]{2,}$/.test(payload.email) || // Validación básica de email
+            payload.paymentMethod === ""
+        ) {
+            return res.status(400).json({
+                message: 'Datos incompletos o inválidos: asegúrate de llenar todos los campos requeridos correctamente.',
+                errors: {
+                    items: payload.items && payload.items.length > 0 ? null : "Se requieren items en el carrito.",
+                    totalAmount: !isNaN(payload.totalAmount) ? null : "totalAmount debe ser un número válido.",
+                    subtotal: !isNaN(payload.subtotal) ? null : "subtotal debe ser un número válido.",
+                    discountAmount: !isNaN(payload.discountAmount) ? null : "discountAmount debe ser un número válido.",
+                    fullName: payload.fullName && payload.fullName !== "" ? null : "fullName es obligatorio.",
+                    deliveryOption: payload.deliveryOption && payload.deliveryOption !== "" ? null : "deliveryOption es obligatorio.",
+                    address: payload.deliveryOption === "envio" && (!payload.address || payload.address === "") ? "address es obligatorio para envío." : null,
+                    city: payload.deliveryOption === "envio" && (!payload.city || payload.city === "") ? "city es obligatorio para envío." : null,
+                    postalCode: payload.deliveryOption === "envio" && (!payload.postalCode || payload.postalCode === "") ? "postalCode es obligatorio para envío." : null,
+                    phone: payload.phone && payload.phone !== "" ? null : "phone es obligatorio.",
+                    email: /^[\w.-]+@[a-zA-Z\d.-]+\.[a-zA-Z]{2,}$/.test(payload.email) ? null : "email debe ser válido.",
+                    paymentMethod: payload.paymentMethod && payload.paymentMethod !== "" ? null : "paymentMethod es obligatorio."
+                }
+            });
+        }
+        
   
         // Construcción de la orden
         const order = {
@@ -901,6 +905,20 @@ export const getDestacados = async (req, res) => {
     try {
 
         const products = await productService.getDestacados()
+        console.log(products)
+        if (products.length > 0) {
+            res.status(200).json({ data: products });
+        }
+
+    } catch (error) {
+        console.error('Error al obtener categorias:', error);
+        res.status(500).json({ message: 'Error al obtener los productos' });
+    }
+};
+export const getPromos = async (req, res) => {
+    try {
+
+        const products = await productService.getPromotions()
         console.log(products)
         if (products.length > 0) {
             res.status(200).json({ data: products });
