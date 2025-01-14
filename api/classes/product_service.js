@@ -212,9 +212,7 @@ class ProductService {
     async getPromotions() {
         try {
             // Encuentra los productos y ordénalos por el atributo "ventas" en orden descendente
-            const p = await this.collection
-                .find()
-                .toArray()
+            const p = await this.collection.find({ promocion: true }).toArray()
             return p;
         } catch (error) {
             console.error('Error fetching destacados:', error);
