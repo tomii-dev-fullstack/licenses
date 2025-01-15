@@ -357,8 +357,8 @@ export const createSimpleOrder = async (req, res) => {
                     })),
                     auto_return: "approved",
                     back_urls: {
-                        success: `${URL_back}`,
-                        failure: `${URL_back}`,
+                        success: `${URL}`,
+                        failure: `${URL}`,
                     },
                     notification_url: `${URL}`,
                     statement_descriptor: "Veterinaria La Comercial",
@@ -394,7 +394,7 @@ export const createSimpleOrder = async (req, res) => {
                 .then(async (response) => {
                     try {
                         // Extraer el sandbox_init_point
-                        const sandbox_init_point = response.sandbox_init_point;
+                        const sandbox_init_point = response.init_point;
                         console.log('Sandbox Init Point:', response);
 
 
