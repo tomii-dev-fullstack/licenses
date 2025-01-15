@@ -394,7 +394,7 @@ export const createSimpleOrder = async (req, res) => {
                 .then(async (response) => {
                     try {
                         // Extraer el sandbox_init_point
-                        const sandbox_init_point = response.init_point;
+                        const init_point = response.init_point;
                         console.log('Sandbox Init Point:', response);
 
 
@@ -402,7 +402,7 @@ export const createSimpleOrder = async (req, res) => {
                         // Responder con el sandbox_init_point o realizar otra acción
                         return res.status(200).json({
                             message: 'Orden creada con éxito.',
-                            sandbox_init_point: sandbox_init_point,
+                            init_point: init_point,
                         });
                     } catch (error) {
                         console.error('Error al procesar la creación de la orden:', error);
