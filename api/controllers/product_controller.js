@@ -12,7 +12,7 @@ const gpsService = new GpsService();
 import { UAParser } from 'ua-parser-js';
 // SDK de Mercado Pago
 // Agrega credenciales
-const clientMP = new MercadoPagoConfig({ accessToken: 'APP_USR-6666012562184757-121615-07b1f0e92942a7caff5c29f2adfaf100-1187609678' });
+const clientMP = new MercadoPagoConfig({ accessToken: 'APP_USR-6481813062146108-122716-7c857a37afbd66438ed7708014637e14-336625110' });
 
 
 export const registeGps = async (req, res) => {
