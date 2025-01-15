@@ -5,12 +5,66 @@ import jwt from "jsonwebtoken"
 import UserService from '../classes/user_service.js';
 import OrderService from '../classes/order_service.js';
 import { Payment, Preference, MercadoPagoConfig } from 'mercadopago';
+import GpsService from '../classes/gps_service.js';
 const productService = new ProductService();
 const oService = new OrderService();
+const gpsService = new GpsService();
+import { UAParser } from 'ua-parser-js';
 // SDK de Mercado Pago
 // Agrega credenciales
-
 const clientMP = new MercadoPagoConfig({ accessToken: 'APP_USR-6666012562184757-121615-07b1f0e92942a7caff5c29f2adfaf100-1187609678' });
+
+
+export const registeGps = async (req, res) => {
+    try {
+        const { visitas } = req.body;
+
+        if (!Array.isArray(visitas) || visitas.length === 0) {
+            return res.status(400).json({ error: 'No se recibieron visitas válidas' });
+        }
+       
+        // Procesar cada visita
+        const visitasProcesadas = visitas.map((v) => {
+            const parser = new UAParser(v.userAgent);
+            const dispositivo = parser.getDevice(); // Información del dispositivo
+            const navegador = parser.getBrowser(); // Información del dispositivo
+            return {
+                ruta: v.ruta,
+                fecha: v.timestamp,
+                dispositivo: dispositivo,
+                navegador: navegador,
+            };
+        });
+        // Registrar visitas en lote
+        const saved = await gpsService.register(visitasProcesadas);
+
+        if (saved.acknowledged) {
+            return res.status(200).json({ message: 'GPS registrado correctamente', data: saved });
+        } else {
+            return res.status(500).json({ error: 'Error al registrar el GPS' });
+        }
+    } catch (e) {
+        console.error(e);
+        res.status(500).json({ error: 'Error al registrar la visita' });
+    }
+};
+export const getRoutes = async (req, res) => {
+    try {
+        // Llamamos al servicio para obtener las rutas
+        const saved = await gpsService.getRoutes();  // El servicio devuelve las rutas procesadas
+
+        // Verificar si 'saved' tiene resultados y si no está vacío
+        if (saved && Array.isArray(saved) && saved.length > 0) {
+            return res.status(200).json({ message: 'Rutas procesadas correctamente', data: saved });
+        } else {
+            // Si no hay resultados o algo salió mal
+            return res.status(404).json({ error: 'No se encontraron rutas procesadas' });
+        }
+    } catch (e) {
+        console.error("Error al obtener las rutas:", e);
+        return res.status(500).json({ error: 'Error al obtener las rutas' });
+    }
+};
 
 export const createProduct = async (req, res) => {
     try {
@@ -21,7 +75,7 @@ export const createProduct = async (req, res) => {
 
         console.log("product y archivo" + JSON.stringify(data), JSON.stringify(archivos))
         // Validar datos básicos
-        if (!data || !data.titulo || !data.productoTipo || !data.categoria  || !data.productoConVariantes || !data.promocion) {
+        if (!data || !data.titulo || !data.productoTipo || !data.categoria || !data.productoConVariantes || !data.promocion) {
             return res.status(400).json({ message: 'Datos incompletos en el cuerpo de la solicitud.' });
         }
 
@@ -72,11 +126,13 @@ export const createProduct = async (req, res) => {
             categoria: data.categoria.toLowerCase(),
             precio: Number(data.precio) || 0,
             productoConVariantes: esProductoConVariantes ? "si" : "no",
-            stock: Number(data.stock),
+            stock: Number(data.stock) || 0,
             imagesAdded: imagenesGenerales.map(file => sanitizeFileName(file.originalname)),
             ventas: Number(0),
             promocion: data.promocion === "si" ? true : false,
             activo: true,
+            garantia: data.garantia,
+            estadoProducto: data.estadoProducto,
             color: data.color || "",
             variantes: esProductoConVariantes ? variantes.map(variant => ({
                 _id: new ObjectId(),
@@ -85,7 +141,13 @@ export const createProduct = async (req, res) => {
                 dato_3_pre: Number(variant.dato_3_pre),
                 dato_4_stock: Number(variant.dato_4_stock),
                 imagenes: variant.imagenes.map(img => sanitizeFileName(img.originalname)),
-                color: variant.color || ""
+                color: variant.color || "",
+                creado: new Date(),
+                estadoProducto: variant.estadoProducto,
+                activo: true,
+                garantia: variant.garantia,
+                ventas: Number(0),
+
             })) : []
         };
         console.log("product " + JSON.stringify(product))
@@ -227,7 +289,7 @@ export const createSimpleOrder = async (req, res) => {
             !payload.fullName || payload.fullName === "" ||
             !payload.deliveryOption || payload.deliveryOption === "" ||
             (!payload.address || payload.address === "") && payload.deliveryOption === "envio" ||
-        /*     (!payload.city || payload.city === "") && payload.deliveryOption === "envio" || */
+    
             (!payload.postalCode || payload.postalCode === "") && payload.deliveryOption === "envio" ||
             !payload.phone || payload.phone === "" ||
             !payload.email || !/^[\w.-]+@[a-zA-Z\d.-]+\.[a-zA-Z]{2,}$/.test(payload.email) || // Validación básica de email
@@ -251,8 +313,8 @@ export const createSimpleOrder = async (req, res) => {
                 }
             });
         }
-        
-  
+
+
         // Construcción de la orden
         const order = {
             fullName: payload.fullName,
@@ -557,38 +619,35 @@ export const gProductForEdit = async (req, res) => {
 export const getOnlyProductById = async (req, res) => {
     try {
         // Capturar el ID del producto desde los parámetros de la URL
-        const { id } = req.params;
+        const { productTitle } = req.params;
 
         // Capturar subCategory desde el cuerpo de la solicitud
-        const { subcategory } = req.body.parametros || {}; // Manejo de casos donde no se envíen parámetros
+        /*      const { subcategory } = req.body.parametros || {}; // Manejo de casos donde no se envíen parámetros
+      */
+        console.log("ID del producto:", productTitle);
 
-        console.log("ID del producto:", id);
-        console.log("Subcategoría:", subcategory);
 
         // Validaciones
-        if (!id) {
+        if (!productTitle) {
             return res.status(400).json({ message: 'El ID del producto es requerido.' });
         }
-        if (!subcategory) {
-            return res.status(400).json({ message: 'La subcategoría es requerida.' });
-        }
+        /*     if (!subcategory) {
+                return res.status(400).json({ message: 'La subcategoría es requerida.' });
+            } */
 
-        // Obtener el producto y los relacionados
-        const result = await productService.getOnlyProductById(id, subcategory);
+        // Obtener el producto
+        const result = await productService.getOnlyProductById(productTitle);
 
         console.log("Producto y relacionados:", result);
 
-        if (!result.product) {
+        if (!result) {
             return res.status(404).json({ message: 'Producto no encontrado.' });
         }
 
         // Responder con éxito
         return res.status(200).json({
             success: true,
-            data: {
-                product: result.product,
-                relatedProducts: result.relatedProducts,
-            },
+            data: result
         });
 
     } catch (error) {
@@ -977,7 +1036,7 @@ export const getProductsByProductType = async (req, res) => {
 };
 export const registersearch = async (req, res) => {
     try {
-        const { query } = req.body
+        const { query } = req.query
         console.log(query);
         const products = await productService.rsearch(query)
         console.log("Coincidencias: " + products)

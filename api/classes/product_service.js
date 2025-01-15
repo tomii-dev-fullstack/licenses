@@ -59,12 +59,10 @@ class ProductService {
     /*   async getOnlyProductById(productId, category, subCategory) {
           return this.collection.find({ _id: new ObjectId(productId) }).toArray();
       } */
-    async getOnlyProductById(productId, subCategory) {
-        console.log(productId, subCategory);
-        const product = await this.collection.find({ _id: new ObjectId(productId) }).toArray();
-        const relatedProducts = await this.collection.find({ categoria: subCategory }).toArray();
+    async getOnlyProductById(productTitle) {
+        const product = await this.collection.findOne({ titulo: productTitle });
 
-        return { product, relatedProducts };
+        return product;
     }
 
     async gProductById(id) {
@@ -138,27 +136,35 @@ class ProductService {
             {
                 $match: {
                     titulo: {
-                        $regex: q,
-                        $options: "i", // Insensible a mayúsculas/minúsculas
+                        $regex: `^${q}`, // Coincidencia que comienza con el término de búsqueda
+                        $options: "i",   // Insensible a mayúsculas/minúsculas
                     },
                 },
             },
             {
                 $project: {
+
+                    variantes: 1,
                     titulo: 1, // Incluir el campo título
                     productoTipo: 1, // Incluir el campo productoTipo
                     categoria: 1, // Incluir el campo categoria
                     variantes: 1,
                     precio: 1,
                     imagesAdded: 1,
-                    variantes: 1,
                     stock: 1,
                     color: 1,
                     activo: 1
                 },
             },
+            /*  {
+                 $limit: 10, // Limitar a 10 sugerencias para mejorar la velocidad y evitar sobrecarga
+             }, */
+            {
+                $sort: { titulo: 1 }, // Ordenar alfabéticamente por título (opcional)
+            },
         ]).toArray();
     }
+
 
     async getProductsByProdType() {
         try {
@@ -352,6 +358,7 @@ class ProductService {
                 // Producto sin variantes, actualizamos solo los campos generales
                 console.log("final data" + JSON.stringify(data))
                 const updateData = {
+                    creado: data.creado,
                     productoConVariantes: data.productoConVariantes,
                     titulo: data.titulo,
                     imagesAdded: [...imagenesExistentes, ...imagenesNuevas],
@@ -359,8 +366,13 @@ class ProductService {
                     productoTipo: data.productoTipo,
                     categoria: data.categoria,
                     color: data.color,
+                    activo: data.activo,
+                    estadoProducto: data.estadoProducto,
+                    garantia: data.garantia,
+                    stock: Number(data.stock),
+                    ventas: Number(data.ventas),
                     precio: Number(data.precio),
-                    variantes: []  // No hay variantes en este producto
+                    variantes: []  // No hay variantes en este producto,
                 };
 
                 const updateQuery = {
@@ -386,7 +398,7 @@ class ProductService {
                 if (data.productoTipo) updateSetQuery.productoTipo = data.productoTipo;
                 if (data.categoria) updateSetQuery.categoria = data.categoria;
                 if (data.color) updateSetQuery.color = data.color;
-                if (data.precio) updateSetQuery.precio = Number(data.precio);
+
 
                 // Si se han realizado cambios, actualizamos el producto
                 if (Object.keys(updateSetQuery).length > 0) {
@@ -424,7 +436,13 @@ class ProductService {
                             dato_1_col: sanitizeFileName(variante.dato_1_col),  // Limpiar texto de dato_1_col
                             dato_2_mul: sanitizeFileName(variante.dato_2_mul),  // Limpiar texto de dato_2_mul
                             dato_3_pre: Number(variante.dato_3_pre) || 0,       // Convertir el precio a número
-                            imagenes: [...imagenesExistentes, ...imagenesNuevas]  // Concatenar las imágenes existentes con las nuevas
+                            dato_4_stock: Number(variante.dato_4_stock) || 0,       // Convertir el precio a número
+                            imagenes: [...imagenesExistentes, ...imagenesNuevas],  // Concatenar las imágenes existentes con las nuevas
+                            creado: variante.creado,
+                            garantia: variante.garantia,
+                            estadoProducto: variante.estadoProducto,
+                            ventas: Number(variante.ventas),
+                            activo: variante.activo
                         };
 
                         return varianteActualizada;

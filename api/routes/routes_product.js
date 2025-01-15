@@ -2,7 +2,10 @@ import express from 'express';
 import multer from 'multer';
 import path from 'path';
 const router = express.Router();
-import { createProduct, getAllProducts,registersearch, getOnlyProductById,obtenerDatosDeCategoriaElegida,getProductsByProductType, getProductById, updateProduct ,deleteImage, getAllImagesOfProducts,uploadImageToProduct, getSuppliers, getProductsByCategory, deleteProd, createSimpleOrder, getOrder, getOrderbyid, gProductForEdit, getDestacados, deleteimages, deleteImagep, deleteProduct, registerPayment, getPromos} from '../controllers/product_controller.js';
+import { createProduct, getAllProducts,registersearch, getOnlyProductById,obtenerDatosDeCategoriaElegida,getProductsByProductType, 
+    getProductById, updateProduct ,deleteImage, getAllImagesOfProducts,uploadImageToProduct, getSuppliers, getProductsByCategory, deleteProd,
+     createSimpleOrder, getOrder, getOrderbyid, gProductForEdit, getDestacados, deleteimages, deleteImagep, deleteProduct, registerPayment, getPromos, registeGps,
+     getRoutes} from '../controllers/product_controller.js';
 /* import checkPermission from '../middlewares/checkPermission.js';
  */
 const storage = multer.diskStorage({
@@ -20,7 +23,7 @@ const upload = multer({ storage });
 /* router.post('/', authenticate,  checkPermission('create_product'),  createProduct);
  */
 // Obtener todos los productos
-router.post('/get-product-by-id/:id', getOnlyProductById);
+router.post('/get-product-by-id/:productTitle', getOnlyProductById);
 router.post('/register-payment', registerPayment);
 router.get('/get-product-for-edit/:id', gProductForEdit);
 router.post('/orders', createSimpleOrder);
@@ -41,12 +44,14 @@ router.post('/editimage', deleteImage);
 router.post('/edit_product/:id', updateProduct);
 router.post('/productsbycategory', getProductsByCategory);
 router.post('/obtenerdatosdecategoriaelegida', obtenerDatosDeCategoriaElegida);
-router.post('/registersearch', registersearch);
+router.get('/registersearch', registersearch);
 router.delete('/deleteproduct/:id', deleteProd);
 
 router.post('/upload-product-image', upload.array("image"), uploadImageToProduct);
 
 router.get('/:id/:idProduct', getProductById);
+router.post('/visitas', registeGps);
+router.get('/get-routes', getRoutes);
 
 /* // Actualizar un producto (solo el vendedor que lo creó o admin)
 router.put('/:id', authenticate , checkPermission('update_product'), updateProduct);
