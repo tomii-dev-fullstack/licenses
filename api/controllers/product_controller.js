@@ -341,7 +341,7 @@ export const createSimpleOrder = async (req, res) => {
 
             const payment = new Preference(clientMP);
 
-            const URL = "https://ecommerce-gabriela.vercel.app";
+            const URL = "https://vetlacomercial.vercel.app";
             const URL_back = "http://localhost:3000";
             /*   const URL = "https://ecommerce-gabriela.vercel.app"; */
             payment.create({
