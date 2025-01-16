@@ -13,7 +13,7 @@ import { UAParser } from 'ua-parser-js';
 import { send } from '../nodemailer/config.js';
 // SDK de Mercado Pago
 // Agrega credenciales
-const clientMP = new MercadoPagoConfig({ accessToken: 'APP_USR-116707077926363-121615-367e341358658fa242a59be159f256c9-360175350' });
+const clientMP = new MercadoPagoConfig({ accessToken: 'APP_USR-6666012562184757-121615-07b1f0e92942a7caff5c29f2adfaf100-1187609678' });
 
 
 export const registeGps = async (req, res) => {
