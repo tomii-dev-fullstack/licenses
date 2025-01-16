@@ -10,6 +10,7 @@ const productService = new ProductService();
 const oService = new OrderService();
 const gpsService = new GpsService();
 import { UAParser } from 'ua-parser-js';
+import { send } from '../nodemailer/config.js';
 // SDK de Mercado Pago
 // Agrega credenciales
 const clientMP = new MercadoPagoConfig({ accessToken: 'APP_USR-6481813062146108-122716-7c857a37afbd66438ed7708014637e14-336625110' });
@@ -22,7 +23,7 @@ export const registeGps = async (req, res) => {
         if (!Array.isArray(visitas) || visitas.length === 0) {
             return res.status(400).json({ error: 'No se recibieron visitas válidas' });
         }
-       
+
         // Procesar cada visita
         const visitasProcesadas = visitas.map((v) => {
             const parser = new UAParser(v.userAgent);
@@ -289,7 +290,7 @@ export const createSimpleOrder = async (req, res) => {
             !payload.fullName || payload.fullName === "" ||
             !payload.deliveryOption || payload.deliveryOption === "" ||
             (!payload.address || payload.address === "") && payload.deliveryOption === "envio" ||
-    
+
             (!payload.postalCode || payload.postalCode === "") && payload.deliveryOption === "envio" ||
             !payload.phone || payload.phone === "" ||
             !payload.email || !/^[\w.-]+@[a-zA-Z\d.-]+\.[a-zA-Z]{2,}$/.test(payload.email) || // Validación básica de email
@@ -341,7 +342,7 @@ export const createSimpleOrder = async (req, res) => {
 
             const payment = new Preference(clientMP);
 
-            const URL = "https://vetlacomercial.vercel.app";
+            const URL = "https://ecommerce-gabriela.vercel.app";
             const URL_back = "http://localhost:3000";
             /*   const URL = "https://ecommerce-gabriela.vercel.app"; */
             payment.create({
@@ -354,6 +355,8 @@ export const createSimpleOrder = async (req, res) => {
                         unit_price: Number(item.precio) || 0, // Ajusta para el precio
                         category_id: item.categoria,
                         description: item.peso + item.color,
+                        picture_url:`https://productosvet.s3.us-east-1.amazonaws.com/${item?.productoTipo}/${item?.categoria}/${item.imagen}`,
+                        description: `${item?.peso}-${item.color}-${item.productoTipo}`,
                     })),
                     auto_return: "approved",
                     back_urls: {
@@ -394,7 +397,7 @@ export const createSimpleOrder = async (req, res) => {
                 .then(async (response) => {
                     try {
                         // Extraer el sandbox_init_point
-                        const init_point = response.init_point;
+                        const init_point = response.sandbox_init_point;
                         console.log('Sandbox Init Point:', response);
 
 
@@ -430,7 +433,8 @@ export const createSimpleOrder = async (req, res) => {
                     quantity: item.cantidad || 1,
                     unit_price: Number(item.precio) || 0, // Ajusta para el precio
                     category_id: item.categoria,
-                    description: `${item.peso}-${item.color}`,
+                    picture_url:`https://productosvet.s3.us-east-1.amazonaws.com/${item?.productoTipo}/${item?.categoria}/${item.imagen}`,
+                    description: `${item?.peso}-${item.color}-${item.productoTipo}`,
                 })),
 
 
@@ -468,6 +472,8 @@ export const createSimpleOrder = async (req, res) => {
                     message: 'No se pudo crear la orden. Inténtalo de nuevo más tarde.',
                 });
             }
+             await send(orderGeneral)
+     
             return res.status(200).json({
                 message: 'Se pudo.',
             });
@@ -524,6 +530,7 @@ export const registerPayment = async (req, res) => {
         console.log(JSON.stringify(order))
         const createdOrder = await oService.createOrdenOne(order);
         const res = await sumSells(order)
+    //    await send(order)
         if (!createdOrder || !res) {
             console.error('Error al crear la orden en la base de datos');
             return res.status(500).json({
