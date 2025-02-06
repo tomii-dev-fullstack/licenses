@@ -1140,7 +1140,7 @@ export const deleteProduct = async (req, res) => {
 export const deleteImagep = async (req, res) => {
     try {
         const { body: data, files: archivos } = req;
-
+        console.log(data);
         const cleanPath = (path) => (path ? path.replace(/\s+/g, "") : "default");
         const productoTipoP = cleanPath(data.productoTipo).toLowerCase();
         const categoriaC = cleanPath(data.categoria).toLowerCase();
