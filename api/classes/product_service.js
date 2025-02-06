@@ -435,8 +435,8 @@ class ProductService {
                         console.log("imgs existentes " + JSON.stringify(imagenesExistentes))
                         const varianteActualizada = {
                             _id: variante._id || new ObjectId(), // Si la variante no tiene _id, asignamos uno nuevo
-                            dato_1_col: sanitizeFileName(variante.dato_1_col),  // Limpiar texto de dato_1_col
-                            dato_2_mul: sanitizeFileName(variante.dato_2_mul),  // Limpiar texto de dato_2_mul
+                            dato_1_col: variante.dato_1_col,  // Limpiar texto de dato_1_col
+                            dato_2_mul: variante.dato_2_mul,  // Limpiar texto de dato_2_mul
                             dato_3_pre: Number(variante.dato_3_pre) || 0,       // Convertir el precio a número
                             dato_4_stock: Number(variante.dato_4_stock) || 0,       // Convertir el precio a número
                             imagenes: [...imagenesExistentes, ...imagenesNuevas],  // Concatenar las imágenes existentes con las nuevas
