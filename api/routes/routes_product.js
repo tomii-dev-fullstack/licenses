@@ -4,7 +4,7 @@ import path from 'path';
 const router = express.Router();
 import { createProduct, getAllProducts,registersearch, getOnlyProductById,obtenerDatosDeCategoriaElegida,getProductsByProductType, 
     getProductById, updateProduct ,deleteImage, getAllImagesOfProducts,uploadImageToProduct, getSuppliers, getProductsByCategory, deleteProd,
-     createSimpleOrder, getOrder, getOrderbyid, gProductForEdit, getDestacados, deleteimages, deleteImagep, deleteProduct, registerPayment, getPromos, registeGps,
+     createSimpleOrder, getOrder, getOrderbyid, gProductForEdit, getDestacados, deleteImagep, deleteProduct, registerPayment, getPromos, registeGps,
      getRoutes} from '../controllers/product_controller.js';
 /* import checkPermission from '../middlewares/checkPermission.js';
  */
@@ -44,7 +44,9 @@ router.post('/editimage', deleteImage);
 router.post('/edit_product/:id', updateProduct);
 router.post('/productsbycategory', getProductsByCategory);
 router.post('/obtenerdatosdecategoriaelegida', obtenerDatosDeCategoriaElegida);
+
 router.get('/registersearch', registersearch);
+
 router.delete('/deleteproduct/:id', deleteProd);
 
 router.post('/upload-product-image', upload.array("image"), uploadImageToProduct);

@@ -6,6 +6,8 @@ class ProductService {
     constructor() {
         this.collection = clientDB.db("tienda").collection('product'); // Nombre de la colección de usuarios
     }
+
+
     async sumProducts(order) {
         for (let item of order.items) {
             const productoId = item.id; // El ID del producto que se compró

@@ -355,7 +355,7 @@ export const createSimpleOrder = async (req, res) => {
                         unit_price: Number(item.precio) || 0, // Ajusta para el precio
                         category_id: item.categoria,
                         description: item.peso + item.color,
-                        picture_url:`https://productosvet.s3.us-east-1.amazonaws.com/${item?.productoTipo}/${item?.categoria}/${item.imagen}`,
+                        picture_url: `https://productosvet.s3.us-east-1.amazonaws.com/${item?.productoTipo}/${item?.categoria}/${item.imagen}`,
                         description: `${item?.peso}-${item.color}-${item.productoTipo}`,
                     })),
                     auto_return: "approved",
@@ -433,7 +433,7 @@ export const createSimpleOrder = async (req, res) => {
                     quantity: item.cantidad || 1,
                     unit_price: Number(item.precio) || 0, // Ajusta para el precio
                     category_id: item.categoria,
-                    picture_url:`https://productosvet.s3.us-east-1.amazonaws.com/${item?.productoTipo}/${item?.categoria}/${item.imagen}`,
+                    picture_url: `https://productosvet.s3.us-east-1.amazonaws.com/${item?.productoTipo}/${item?.categoria}/${item.imagen}`,
                     description: `${item?.peso}-${item.color}-${item.productoTipo}`,
                 })),
 
@@ -472,8 +472,8 @@ export const createSimpleOrder = async (req, res) => {
                     message: 'No se pudo crear la orden. Inténtalo de nuevo más tarde.',
                 });
             }
-             await send(orderGeneral)
-     
+            await send(orderGeneral)
+
             return res.status(200).json({
                 message: 'Se pudo.',
             });
@@ -530,7 +530,7 @@ export const registerPayment = async (req, res) => {
         console.log(JSON.stringify(order))
         const createdOrder = await oService.createOrdenOne(order);
         const res = await sumSells(order)
-    //    await send(order)
+        //    await send(order)
         if (!createdOrder || !res) {
             console.error('Error al crear la orden en la base de datos');
             return res.status(500).json({
