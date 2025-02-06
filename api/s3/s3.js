@@ -31,7 +31,8 @@ export const uploadFileToS3 = async (file, data, categoria/* , product */) => {
     }
     try {
 
-        const stream = fs.createReadStream(file.path);
+        const stream = file.buffer
+        /* const stream = fs.createReadStream(file.path); */
         const key = file.originalname ? `${data.toLowerCase()}/${categoria.toLowerCase()}/${sanitizeFileName(file.originalname.toLowerCase())}` : `${data.toLowerCase()}/${categoria.toLowerCase()}/${sanitizeFileName(file.imagen.toLowerCase())}`;
         const uploadParams = {
             Bucket: process.env.AWS_BUCKET_NAME,
