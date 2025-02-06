@@ -1,6 +1,6 @@
 import express from 'express';
-import multer from 'multer';
-import path from 'path';
+/* import multer from 'multer';
+import path from 'path'; */
 const router = express.Router();
 import { createProduct, getAllProducts,registersearch, getOnlyProductById,obtenerDatosDeCategoriaElegida,getProductsByProductType, 
     getProductById, updateProduct ,deleteImage, getAllImagesOfProducts,uploadImageToProduct, getSuppliers, getProductsByCategory, deleteProd,
@@ -8,7 +8,7 @@ import { createProduct, getAllProducts,registersearch, getOnlyProductById,obtene
      getRoutes} from '../controllers/product_controller.js';
 /* import checkPermission from '../middlewares/checkPermission.js';
  */
-const storage = multer.diskStorage({
+/* const storage = multer.diskStorage({
     destination: (req, file, cb) => {
         cb(null, 'api/uploads/');  // Carpeta donde se guardarán los archivos
     },
@@ -18,7 +18,7 @@ const storage = multer.diskStorage({
         cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));  // Nombre único para evitar colisiones
     }
 });
-const upload = multer({ storage });
+const upload = multer({ storage }); */
 // Crear un producto (solo vendedores autorizados)
 /* router.post('/', authenticate,  checkPermission('create_product'),  createProduct);
  */
@@ -35,11 +35,11 @@ router.get('/get-destacados', getDestacados);
 router.get('/get-promotions', getPromos);
 router.get('/all-images', getAllImagesOfProducts);
 router.get('/productsbyproductstype', getProductsByProductType);
-router.put('/save-edits', upload.any(), updateProduct);
-router.put('/update-product/:id', upload.any(), deleteImagep);
+router.put('/save-edits', /* upload.any(), */ updateProduct);
+router.put('/update-product/:id', /* upload.any(), */ deleteImagep);
 router.delete('/delete-product/:id', deleteProduct);
 /* router.put('/deleteimage', upload.any(), deleteimages); */
-router.post('/add-product', upload.any(), createProduct);
+router.post('/add-product',/*  upload.any(), */ createProduct);
 router.post('/editimage', deleteImage);
 router.post('/edit_product/:id', updateProduct);
 router.post('/productsbycategory', getProductsByCategory);
@@ -49,7 +49,7 @@ router.get('/registersearch', registersearch);
 
 router.delete('/deleteproduct/:id', deleteProd);
 
-router.post('/upload-product-image', upload.array("image"), uploadImageToProduct);
+router.post('/upload-product-image',/*  upload.array("image"), */ uploadImageToProduct);
 
 router.get('/:id/:idProduct', getProductById);
 router.post('/visitas', registeGps);
