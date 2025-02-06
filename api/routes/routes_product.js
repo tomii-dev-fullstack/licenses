@@ -8,10 +8,18 @@ import { createProduct, getAllProducts,registersearch, getOnlyProductById,obtene
      getRoutes} from '../controllers/product_controller.js';
 /* import checkPermission from '../middlewares/checkPermission.js';
  */
+const isVercel = process.env.VERCEL === '1';
  const storage = multer.diskStorage({
+  
     destination: (req, file, cb) => {
-        cb(null, 'tmp/');  // Carpeta donde se guardarán los archivos
-     /*    cb(null, 'api/uploads/');  // Carpeta donde se guardarán los archivos */
+      if (isVercel) {
+        // En Vercel, usamos /tmp como directorio temporal
+        cb(null, '/tmp');
+      } else{
+
+       cb(null, 'api/uploads/');  // Carpeta donde se guardarán los archivos */
+      }
+   
     },
     filename: (req, file, cb) => {
         const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
