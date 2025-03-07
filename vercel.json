@@ -31,7 +31,7 @@
     "redirects": [
         {
             "source": "/",
-            "destination": "https://dashboard-gabiela.vercel.app/dashboard/inventario",
+            "destination": "https://dashboard-gabiela.vercel.app/dashboard/inventarios",
             "statusCode": 301
         },
         {
