@@ -27,5 +27,17 @@
                 "Access-Control-Allow-Credentials": "true"
             }
         }
+    ],
+    "redirects": [
+        {
+            "source": "/",
+            "destination": "https://dashboard-gabiela.vercel.app/dashboard/inventario",
+            "statusCode": 301
+        },
+        {
+            "source": "api/(.*)",
+            "destination": "/api/index.js",
+            "statusCode": 200
+        }
     ]
 }
