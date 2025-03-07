@@ -11,23 +11,12 @@
             }
         }
     ],
-    "routes": [
-        {
-            "src": "/(.*)",
-            "dest": "api/index.js",
-            "methods": [
-                "POST",
-                "GET",
-                "DELETE",
-                "PUT",
-                "OPTIONS"
-            ],
-            "headers": {
-                "Access-Control-Allow-Origin": "*",
-                "Access-Control-Allow-Credentials": "true"
-            }
+    "functions": {
+        "api/*": {
+            "maxDuration": 10,
+            "memory": 512
         }
-    ],
+    },
     "redirects": [
         {
             "source": "/",
