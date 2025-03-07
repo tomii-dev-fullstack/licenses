@@ -12,6 +12,7 @@ const AWS_BUCKET_REGION = process.env.AWS_BUCKET_REGION;
 console.log('Región:', AWS_BUCKET_REGION);  // Añadir esto para depuración
 
 const client = new S3Client({
+    maxAttempts:3,
     region: process.env.AWS_BUCKET_REGION,
     credentials: {
         accessKeyId: process.env.AWS_PUBLIC_KEY,
