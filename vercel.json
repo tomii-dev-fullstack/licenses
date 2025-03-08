@@ -10,5 +10,18 @@
                 ]
             }
         }
+    ],
+    "routes": [
+        {
+            "src": "/(.*)",
+            "dest": "api/index.js",
+            "methods": [
+                "POST",
+                "GET",
+                "DELETE",
+                "PUT",
+                "OPTIONS"
+            ]
+        }
     ]
 }
