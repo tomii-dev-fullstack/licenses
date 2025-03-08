@@ -153,7 +153,7 @@ export const createProduct = async (req, res) => {
         };
         console.log("product " + JSON.stringify(product))
         // Subir imágenes a S3 o almacenamiento externo (si corresponde)
-        if (imagenesGenerales.length > 0) {
+         if (imagenesGenerales.length > 0) {
             await Promise.all(imagenesGenerales.map(async (file, index) => {
                 try {
                     const subidaExitosa = await uploadFileToS3(file, productoTipoP, categoriaC);
@@ -164,9 +164,9 @@ export const createProduct = async (req, res) => {
                     console.error(`Error al subir la imagen general ${index}:`, error);
                 }
             }));
-        }
+        } 
 
-        if (esProductoConVariantes) {
+         if (esProductoConVariantes) {
             await Promise.all(variantes.map(async (variant, index) => {
                 await Promise.all(variant.imagenes.map(async (imagen, imgIndex) => {
                     try {
@@ -179,19 +179,19 @@ export const createProduct = async (req, res) => {
                     }
                 }));
             }));
-        }
+        } 
 
 
         // Guardar el producto en la base de datos
-        const createdProduct = await productService.createProduct(product);
+         const createdProduct = await productService.createProduct(product);
         if (!createdProduct) {
             return res.status(500).json({ message: 'Error al guardar el producto en la base de datos.' });
-        }
+        } 
 
         // Responder con éxito
         res.status(200).json({
             message: 'Producto creado exitosamente',
-            producto: createdProduct
+             producto: createdProduct 
         });
     } catch (error) {
         console.error('Error al crear el producto:', error);
