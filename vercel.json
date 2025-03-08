@@ -10,23 +10,5 @@
                 ]
             }
         }
-    ],
-    "functions": {
-        "api/*": {
-            "maxDuration": 10,
-            "memory": 512
-        }
-    },
-    "redirects": [
-        {
-            "source": "/",
-            "destination": "https://dashboard-gabiela.vercel.app/dashboard/inventario",
-            "statusCode": 301
-        },
-        {
-            "source": "api/(.*)",
-            "destination": "/api/index.js",
-            "statusCode": 200
-        }
     ]
 }
