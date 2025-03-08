@@ -29,7 +29,7 @@ const storage = multer.diskStorage({
     cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));  // Nombre único para evitar colisiones
   }
 });
-const upload = multer({ storage, limits: { fileSize: 50 * 1024 * 1024 } });
+const upload = multer({ storage});
 // Crear un producto (solo vendedores autorizados)
 /* router.post('/', authenticate,  checkPermission('create_product'),  createProduct);
  */
