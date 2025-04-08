@@ -23,9 +23,12 @@ async function startServer() {
   // Iniciar el servidor Express
   const port = 4000;
   app.listen(port, (req, res) => {
-    res.send('Server is running...')
     console.log(`🚀 Server running on http://localhost:${port}`);
     console.log(`GraphQL playground available at http://localhost:${port}${server.graphqlPath}`);
+  });
+
+  app.get('/', (req, res) => {
+    res.send('API with GraphQL is running');
   });
 }
 
