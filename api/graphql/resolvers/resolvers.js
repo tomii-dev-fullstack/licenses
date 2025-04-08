@@ -1,8 +1,8 @@
+import mongoose from 'mongoose';
 import licencia from '../../models_db/licence.js';
 import license from '../../models_db/licence.js';
 import Product from '../../models_db/product.js';
 import generateLicenseKey from '../../utils/generate.js';
-
 export const resolvers = {
   Query: {
     getLicenses: async () => {
@@ -12,9 +12,20 @@ export const resolvers = {
         throw new Error('Error fetching licenses: ' + err.message);
       }
     },
-    getLicense: async (_, { key }) => {
-      return await license.findOne({ key });
+    getLicense: async (_, { id }) => {
+      const objectId = new mongoose.Types.ObjectId(id);
+      return await license.findOne({ _id: objectId }); // Busca la licencia por ID
     },
+    getLicensesByProduct: async (_, { productId }) => {
+      try {
+        const product = await Product.findById(productId).populate('licenses'); // Usamos populate para obtener las licencias asociadas
+        if (!product) throw new Error('Producto no encontrado');
+
+        return product.licenses; // Devuelve las licencias del producto
+      } catch (err) {
+        throw new Error('Error fetching licenses for product: ' + err.message);
+      }
+    }
   },
 
   Mutation: {
@@ -34,10 +45,7 @@ export const resolvers = {
       });
 
       return license;
-    }
-    ,
-
-
+    },
     revokeLicense: async (_, { key }) => {
       const result = await license.findOneAndUpdate(
         { key },

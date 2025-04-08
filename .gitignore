@@ -27,3 +27,4 @@ build/
 # Archivos sensibles típicos (por si las dudas)
 *credentials*.json
 service-account*.json
+firebase.json

@@ -6,6 +6,10 @@ const productSchema = new mongoose.Schema({
     type: String,
     required: true
   },
+  licenses: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'licencia'  // Referencia al modelo License
+  }],
   webhookURL: {
     type: String,
     default: null

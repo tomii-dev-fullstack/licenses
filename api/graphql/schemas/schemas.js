@@ -2,8 +2,9 @@ import { gql } from 'apollo-server-express';
 
 export const typeDefs = gql`
   type Query {
-    getLicense(key: String!): licencia
+    getLicense(id: String!): licencia
     getLicenses: [licencia!]!
+    getLicensesByProduct(productId: String!): [licencia!]!
   }
 
   type Mutation {
@@ -18,7 +19,7 @@ export const typeDefs = gql`
     key: String!
     status: String!
     user: String!
-    usageCount: Int!
+    usageCount: Int
     createdAt: String!
     expiresAt: String
   }
