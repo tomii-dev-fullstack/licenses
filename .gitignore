@@ -1,5 +1,29 @@
-.vercel
-node_modules
+# Node modules (no los subas jamás)
+node_modules/
+
+# Archivos de entorno
 .env
-firebase.json
-apis.js
+.env.*   # para .env.local, .env.development, etc.
+
+# Config de VS Code
+.vscode/
+
+# Logs
+*.log
+
+# Archivos del sistema (Mac, Windows)
+.DS_Store
+Thumbs.db
+
+# Archivos temporales o de respaldo
+*.tmp
+*.bak
+*.swp
+
+# Producción / Build (si usás esto más adelante)
+dist/
+build/
+
+# Archivos sensibles típicos (por si las dudas)
+*credentials*.json
+service-account*.json
