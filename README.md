@@ -28,9 +28,9 @@ npm start
 
 Configurar tus variables de entorno en un archivo .env:
 
-env
 MONGO_URI=mongodb+srv://...
 PORT=4000
+
 📬 Consultas en GraphQL
 Accedé al playground en http://localhost:4000/graphql y probá tus queries.
 
