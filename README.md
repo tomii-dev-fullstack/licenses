@@ -25,6 +25,7 @@ git clone https://github.com/tu-usuario/tu-repo.git
 cd tu-repo
 npm install
 npm start
+
 Configurar tus variables de entorno en un archivo .env:
 
 env
