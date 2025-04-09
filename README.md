@@ -24,8 +24,8 @@ Consultar licencias por ID o producto
 
 ▶️ Cómo levantarlo
 
-git clone https://github.com/tu-usuario/tu-repo.git
-cd tu-repo
+git clone https://github.com/tomii-dev-fullstack/licenses
+cd licenses
 npm install
 npm start
 
