@@ -1,4 +1,5 @@
 🧠 API de Licencias de Software
+
 Este proyecto es una API para gestionar licencias de software: creación, validación y revocación, todo desde un backend rápido y flexible.
 
 🚀 Tecnologías
