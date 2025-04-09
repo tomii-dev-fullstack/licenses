@@ -2,6 +2,7 @@
 Este proyecto es una API para gestionar licencias de software: creación, validación y revocación, todo desde un backend rápido y flexible.
 
 🚀 Tecnologías
+
 Node.js – Motor del backend
 
 GraphQL – Consultas eficientes y precisas
@@ -11,6 +12,7 @@ MongoDB – Base de datos NoSQL para licencias y productos
 AWS EC2 – Infraestructura de despliegue
 
 🛠️ Funcionalidades principales
+
 Crear licencias vinculadas a productos
 
 Validar licencias al momento de usarlas
