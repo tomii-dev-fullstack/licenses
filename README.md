@@ -35,7 +35,7 @@ MONGO_URI=mongodb+srv://...
 PORT=4000
 
 📬 Consultas en GraphQL
-Accedé al playground en http://localhost:4000/graphql y probá tus queries.
+Accedé al playground en http://localhost:4000/graphql y probá tus queries (servidor apagado ahora).
 
 Autenticación: Este proyecto no incluye autenticación por el momento.
 Generación de Licencias: Se genera una clave única para cada licencia a través de la función generateLicenseKey en los servicios.
