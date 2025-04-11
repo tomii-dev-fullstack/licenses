@@ -1,42 +1,70 @@
-🧠 API de Licencias de Software
+# 🧠 API de Licencias de Software
 
 Este proyecto es una API para gestionar licencias de software: creación, validación y revocación, todo desde un backend rápido y flexible.
 
-🚀 Tecnologías
+---
 
-Node.js – Motor del backend
+## 🚀 Tecnologías utilizadas
 
-GraphQL – Consultas eficientes y precisas
+- **Node.js** – Motor del backend.
+- **GraphQL** – Consultas precisas y flexibles.
+- **MongoDB** – Base de datos NoSQL para almacenar licencias y productos.
+- **AWS EC2** – Infraestructura de despliegue (entorno de producción).
 
-MongoDB – Base de datos NoSQL para licencias y productos
+---
 
-AWS EC2 – Infraestructura de despliegue
+## 🛠️ Funcionalidades principales
 
-🛠️ Funcionalidades principales
+- 📄 **Crear licencias** asociadas a productos.
+- ✅ **Validar licencias** en tiempo real.
+- ❌ **Revocar licencias** en cualquier momento.
+- 🔍 **Consultar licencias** por ID o por producto.
 
-Crear licencias vinculadas a productos
+---
 
-Validar licencias al momento de usarlas
+## ▶️ Cómo levantar el proyecto
 
-Revocar licencias en cualquier momento
+1. Cloná el repositorio:
 
-Consultar licencias por ID o producto
+   ```bash
+   git clone https://github.com/tomii-dev-fullstack/licenses
+   cd licenses
+   ```
 
-▶️ Cómo levantarlo
+2. Instalá las dependencias:
 
-git clone https://github.com/tomii-dev-fullstack/licenses
-cd licenses
-npm install
-npm start
+   ```bash
+   npm install
+   ```
 
-Configurar tus variables de entorno en un archivo .env:
+3. Configurá las variables de entorno en un archivo `.env`:
 
-MONGO_URI=mongodb+srv://...
-PORT=4000
+   ```env
+   MONGO_URI=mongodb+srv://<usuario>:<password>@cluster.mongodb.net/<db>
+   PORT=4000
+   ```
 
-📬 Consultas en GraphQL
-Accedé al playground en http://localhost:4000/graphql y probá tus queries (servidor apagado ahora).
+4. Iniciá el servidor:
 
-Autenticación: Este proyecto no incluye autenticación por el momento.
-Generación de Licencias: Se genera una clave única para cada licencia a través de la función generateLicenseKey en los servicios.
+   ```bash
+   npm start
+   ```
 
+---
+
+## 📬 GraphQL Playground
+
+Una vez iniciado el servidor, accedé al Playground de GraphQL desde:
+
+```
+http://localhost:4000/graphql
+```
+
+Desde ahí podés probar tus **queries** y **mutaciones** para gestionar licencias fácilmente.
+
+---
+
+## 🧾 Información adicional
+
+- 🔐 **Autenticación**: Actualmente, esta API **no cuenta con autenticación** integrada.
+- 🔑 **Generación de licencias**: Las claves de licencia se generan de forma única mediante la función `generateLicenseKey`, ubicada en los servicios del backend.
