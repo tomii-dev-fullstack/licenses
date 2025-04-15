@@ -21,7 +21,7 @@ async function startServer() {
   server.applyMiddleware({ app, path: '/graphql' });
 
   // Iniciar el servidor Express
-  const port = 4000;
+  const PORT = process.env.PORT || 4000;
   app.listen(port, (req, res) => {
     console.log(`🚀 Server running on http://localhost:${port}`);
     console.log(`GraphQL playground available at http://localhost:${port}${server.graphqlPath}`);
