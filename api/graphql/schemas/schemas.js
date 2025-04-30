@@ -11,9 +11,19 @@ export const typeDefs = gql`
     generateLicense(productId: ID!): licencia
     createProduct(name: String!, webhookURL: String): Product
     revokeLicense(key: String!): licencia
-    validateLicense(key: String!, productId: ID!): Boolean
+    validateLicense(key: String!, productId: ID!): ValidationResponse
+    logout: LogoutResponse
+  }
+  type LogoutResponse {
+    success: Boolean!
+    message: String!
   }
 
+  type ValidationResponse {
+    success: Boolean!
+    token: String
+    message: String
+  }
   type licencia {
     id: ID!
     key: String!

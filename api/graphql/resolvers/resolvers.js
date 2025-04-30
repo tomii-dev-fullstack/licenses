@@ -3,6 +3,8 @@ import licencia from '../../models_db/licence.js';
 import license from '../../models_db/licence.js';
 import Product from '../../models_db/product.js';
 import generateLicenseKey from '../../utils/generate.js';
+import jwt from 'jsonwebtoken';  // Asegúrate de instalar la librería
+
 export const resolvers = {
   Query: {
     getLicenses: async () => {
@@ -53,17 +55,41 @@ export const resolvers = {
       );
       return !!result;
     },
+    validateLicense: async (_, { key, productId }, { res }) => {
+      console.log("Validando licencia:", key, productId); // Agrega un log para depuración
+      try {
+        const result = await license.findOne({ key, productId: new mongoose.Types.ObjectId(productId) })
 
-    validateLicense: async (_, { key, productId }) => {
-      const license = await license.findOne({ key, product: productId });
+        if (!result || result.status !== 'active') {
+          return {
+            success: false,
+            message: 'Licencia no válida o inactiva',
+          };
+        }
 
-      if (!license || license.status !== 'active') return false;
+        // Si usageCount es null o undefined, lo inicializa en 0
+        result.usageCount = (result.usageCount || 0) + 1;
+        await result.save();
+        const token = jwt.sign(
+          { userId: result.user, key: result.key },
+          process.env.JWT_SECRET || 'clave-secreta',
+          { expiresIn: '1h' }
+        );
 
-      license.usageCount += 1;
-      await license.save();
-
-      return true;
+        // 🧁 Seteamos la cookie acá
+        res.cookie('token', token, {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: 'Lax',
+          maxAge: 60 * 60 * 1000, // 1 hora
+        });
+        return { success: true, token: token, message: 'Licencia válida' };
+      } catch (error) {
+        console.error("Error al validar la licencia:", error);
+        return { success: false, message: 'Error al validar la licencia' };
+      }
     },
+
     createProduct: async (_, { name, webhookURL }) => {
       try {
         const newProduct = new Product({
@@ -78,5 +104,27 @@ export const resolvers = {
         throw new Error('Error creando el producto');
       }
     },
+    logout: async (_, __, { res }) => {
+      try {
+        res.clearCookie('token', {
+          httpOnly: true,
+          sameSite: 'lax',
+          secure: process.env.NODE_ENV === 'production',
+        });
+    
+        return {
+          success: true,
+          message: 'Sesión cerrada correctamente',
+        };
+      } catch (error) {
+        console.error('Error al cerrar sesión:', error);
+    
+        return {
+          success: false,
+          message: 'Hubo un error al cerrar la sesión',
+        };
+      }
+    }    
+
   }
 };
