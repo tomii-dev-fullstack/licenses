@@ -33,6 +33,6 @@ jobs:
           username: ubuntu
           key: ${{ secrets.SSH_KEY }}
           script: |
-            cd /home/ubuntu/miapp
+            cd /home/ubuntu/licenses
             npm install
-            pm2 restart miapp || pm2 start npm --name "licenses" -- start
+            pm2 restart licenses || pm2 start npm --name "licenses" -- start
