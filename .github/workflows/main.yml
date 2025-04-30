@@ -25,6 +25,9 @@ jobs:
           key: ${{ secrets.SSH_KEY }}
           source: "."                      
           target: "/home/ubuntu/licenses"     
+      - name: Verificar npm y node
+        run: |
+          ssh -i ${{ secrets.SSH_KEY }} ubuntu@${{ secrets.HOST }} "node -v && npm -v"
 
       - name: Ejecutar comandos en EC2
         uses: appleboy/ssh-action@master
