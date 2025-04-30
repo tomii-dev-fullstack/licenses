@@ -25,21 +25,19 @@ jobs:
           key: ${{ secrets.SSH_KEY }}
           source: "."                      
           target: "/home/ubuntu/licenses"     
-      - name: Verificar npm y node
-        run: |
-          ssh -i server.pem ubuntu@${{ secrets.HOST }} "node -v && npm -v"
 
       - name: Ejecutar comandos en EC2
-        uses: appleboy/ssh-action@master
-        with:
-          host: ${{ secrets.HOST }}
-          username: ubuntu
-          key: ${{ secrets.SSH_KEY }}
-          script: |
+        run: |
+          echo "${{ secrets.SSH_KEY }}" > server.pem
+          chmod 600 server.pem
+          ssh -i server.pem -o StrictHostKeyChecking=no ubuntu@${{ secrets.HOST }} << 'EOF'
             cd /home/ubuntu/licenses
-            npm install || { echo 'npm install failed'; exit 1; }
+            npm install
             nohup npm start &
-            
+          EOF
+
       - name: Verificar si el servidor está corriendo
         run: |
-          ssh -i server.pem -o StrictHostKeyChecking=no ubuntu@${{ secrets.HOST }} "pgrep -fl 'npm start' || echo 'El servidor no está corriendo'"
+          echo "${{ secrets.SSH_KEY }}" > server.pem
+          chmod 600 server.pem
+          ssh -i server.pem -o StrictHostKeyChecking=no ubuntu@${{ secrets.HOST }} "pgrep -fl 'node' || echo 'No se encontró el proceso 😬'"
