@@ -17,11 +17,6 @@ jobs:
         with:
           node-version: '18'
 
-      - name: Construir proyecto (opcional si no usás build)
-        run: |
-          npm install
-          npm run build
-
       - name: Subir archivos a EC2
         uses: appleboy/scp-action@master
         with:
