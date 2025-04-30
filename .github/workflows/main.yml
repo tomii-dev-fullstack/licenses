@@ -27,7 +27,7 @@ jobs:
           target: "/home/ubuntu/licenses"     
       - name: Verificar npm y node
         run: |
-          ssh -i ${{ secrets.SSH_KEY }} ubuntu@${{ secrets.HOST }} "node -v && npm -v"
+          ssh -i server.pem ubuntu@${{ secrets.HOST }} "node -v && npm -v"
 
       - name: Ejecutar comandos en EC2
         uses: appleboy/ssh-action@master
@@ -40,6 +40,6 @@ jobs:
             npm install || { echo 'npm install failed'; exit 1; }
             nohup npm start &
             
-      - name: Verificar si el proceso está corriendo
+      - name: Verificar si el servidor está corriendo
         run: |
-          ssh -i ${{ secrets.SSH_KEY }} ubuntu@${{ secrets.HOST }} "pgrep -fl 'npm start' || echo 'El servidor no está corriendo'"
+          ssh -i server.pem -o StrictHostKeyChecking=no ubuntu@${{ secrets.HOST }} "pgrep -fl 'npm start' || echo 'El servidor no está corriendo'"
