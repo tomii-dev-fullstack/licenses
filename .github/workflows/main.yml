@@ -34,5 +34,9 @@ jobs:
           key: ${{ secrets.SSH_KEY }}
           script: |
             cd /home/ubuntu/licenses
-            npm install
-            pm2 restart licenses || pm2 start npm --name "licenses" -- start
+            npm install || { echo 'npm install failed'; exit 1; }
+            nohup npm start &
+            
+      - name: Verificar si el proceso está corriendo
+        run: |
+          ssh -i ${{ secrets.SSH_KEY }} ubuntu@${{ secrets.HOST }} "pgrep -fl 'npm start' || echo 'El servidor no está corriendo'"
