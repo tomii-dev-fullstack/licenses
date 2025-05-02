@@ -31,9 +31,15 @@ jobs:
           echo "${{ secrets.SSH_KEY }}" > server.pem
           chmod 600 server.pem
           ssh -i server.pem -o StrictHostKeyChecking=no ubuntu@${{ secrets.HOST }} << 'EOF'
+            # Cargar nvm
+            source ~/.nvm/nvm.sh
+
+            # Usar la versión de Node.js instalada
+            nvm use 22.14.0
+
             cd /home/ubuntu/projects/licenses
             npm install 
-            nohup npm start
+            nohup npm start &
           EOF
 
       - name: Verificar si el servidor está corriendo
