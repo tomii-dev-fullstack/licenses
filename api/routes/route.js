@@ -22,7 +22,7 @@ async function startServer() {
 
   // Iniciar el servidor Express
   const PORT = process.env.PORT || 4000;
-  app.listen(PORT, (req, res) => {
+  app.listen(PORT,'0.0.0.0', (req, res) => {
     console.log(`🚀 Server running on http://localhost:${PORT}`);
     console.log(`GraphQL playground available at http://localhost:${PORT}${server.graphqlPath}`);
   });
