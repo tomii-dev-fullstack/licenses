@@ -24,14 +24,14 @@ jobs:
           username: ubuntu
           key: ${{ secrets.SSH_KEY }}
           source: "."                      
-          target: "/home/ubuntu/licenses"     
+          target: "/home/ubuntu/projects/licenses"     
 
       - name: Ejecutar comandos en EC2
         run: |
           echo "${{ secrets.SSH_KEY }}" > server.pem
           chmod 600 server.pem
           ssh -i server.pem -o StrictHostKeyChecking=no ubuntu@${{ secrets.HOST }} << 'EOF'
-            cd /home/ubuntu/licenses
+            cd /home/ubuntu/projects/licenses
             npm install 
             nohup npm start
           EOF
