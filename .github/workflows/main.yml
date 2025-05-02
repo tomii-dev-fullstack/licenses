@@ -32,7 +32,7 @@ jobs:
           chmod 600 server.pem
           ssh -i server.pem -o StrictHostKeyChecking=no ubuntu@${{ secrets.HOST }} << 'EOF'
             cd /home/ubuntu/licenses
-            npm install &
+            npm install 
             nohup npm start
           EOF
 
