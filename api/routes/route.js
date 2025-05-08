@@ -27,7 +27,7 @@ async function startServer() {
     console.log(`GraphQL playground available at http://localhost:${PORT}${server.graphqlPath}`);
   });
   app.get('/api/check-auth', authenticateToken, (req, res) => {
-    res.json({ success: true, message: 'Token válido', user: req.user });
+    res.json({ success: true, message: 'Token válido cambio de rama a dev', user: req.user });
   });
   app.get('/', (req, res) => {
     res.send('API with GraphQL is running');
